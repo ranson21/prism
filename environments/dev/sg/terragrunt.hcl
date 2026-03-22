@@ -56,6 +56,13 @@ generate "main" {
       vpc_id      = var.vpc_id
 
       ingress {
+        description     = "Site (nginx)"
+        from_port       = 80
+        to_port         = 80
+        protocol        = "tcp"
+        security_groups = [aws_security_group.alb.id]
+      }
+      ingress {
         description     = "UI"
         from_port       = 3000
         to_port         = 3000
@@ -70,7 +77,7 @@ generate "main" {
         security_groups = [aws_security_group.alb.id]
       }
       ingress {
-        description     = "ML Engine (internal ALB path)"
+        description     = "ML Engine (internal)"
         from_port       = 8001
         to_port         = 8001
         protocol        = "tcp"

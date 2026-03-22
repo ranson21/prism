@@ -11,7 +11,7 @@ export
         infra-plan-dev infra-apply-dev infra-destroy-dev \
         infra-plan-test infra-apply-test infra-destroy-test \
         ecr-login ecr-push-dev ecr-push-test \
-        aws-db-migrate aws-seed-data aws-url
+        aws-db-migrate aws-seed-data aws-alb-url aws-url
 
 bootstrap: bootstrap-ml bootstrap-api bootstrap-web
 
@@ -252,9 +252,11 @@ ecr-push-dev: ecr-login
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest       ./services/api
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest ./services/ml-engine
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ui:latest        ./apps/ui
+	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-site:latest      ./apps/site
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ui:latest
+	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-site:latest
 
 ecr-push-test: ecr-login
 	$(eval ACCOUNT_ID=$(shell aws sts get-caller-identity --query Account --output text))
@@ -263,9 +265,11 @@ ecr-push-test: ecr-login
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest       ./services/api
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest ./services/ml-engine
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ui:latest        ./apps/ui
+	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-site:latest      ./apps/site
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ui:latest
+	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-site:latest
 
 # ── Seeding & data pipeline ───────────────────────────────────────────────────
 
@@ -318,7 +322,15 @@ aws-seed-data:
 	  --command "python -m app.scoring.score" --interactive --region $(REGION)
 	@echo "✓ Pipeline complete"
 
-# Print the shareable CloudFront URL for an environment
+# Print the ALB HTTP URL (available immediately, no CloudFront needed)
+aws-alb-url:
+	$(eval ENV    ?= dev)
+	$(eval REGION ?= us-east-1)
+	@echo "http://$$(aws elbv2 describe-load-balancers \
+	  --query \"LoadBalancers[?contains(LoadBalancerName,'prism-$(ENV)')].DNSName\" \
+	  --output text --region $(REGION))"
+
+# Print the shareable CloudFront HTTPS URL for an environment
 aws-url:
 	$(eval ENV ?= dev)
 	@echo "https://$$(cd environments/$(ENV)/cloudfront && terragrunt output -raw cloudfront_domain_name --terragrunt-non-interactive 2>/dev/null)"

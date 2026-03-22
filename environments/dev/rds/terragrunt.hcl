@@ -11,7 +11,7 @@ dependency "vpc" {
   config_path = "../vpc"
   mock_outputs = {
     vpc_id                     = "vpc-00000000"
-    database_subnets           = ["subnet-00000001", "subnet-00000002"]
+    database_subnets           = ["subnet-00000001", "subnet-00000002", "subnet-00000003"]
     database_subnet_group_name = "prism-dev-db-subnet-group"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]

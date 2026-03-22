@@ -54,18 +54,30 @@ inputs = {
       conditions = [{
         path_patterns = ["/api/*"]
       }]
+    },
+    {
+      http_tcp_listener_index = 0
+      priority                = 2
+      actions = [{
+        type               = "forward"
+        target_group_index = 2
+      }]
+      conditions = [{
+        path_patterns = ["/app", "/app/*"]
+      }]
     }
   ]
 
+  # index 0 = site, index 1 = api, index 2 = ui
   target_groups = [
     {
-      name             = "prism-${local.env.env}-ui"
+      name             = "prism-${local.env.env}-site"
       backend_protocol = "HTTP"
-      backend_port     = 3000
+      backend_port     = 80
       target_type      = "ip"
       health_check = {
         enabled             = true
-        path                = "/health"
+        path                = "/"
         healthy_threshold   = 2
         unhealthy_threshold = 3
       }
@@ -78,6 +90,18 @@ inputs = {
       health_check = {
         enabled = true
         path    = "/health"
+      }
+    },
+    {
+      name             = "prism-${local.env.env}-ui"
+      backend_protocol = "HTTP"
+      backend_port     = 3000
+      target_type      = "ip"
+      health_check = {
+        enabled             = true
+        path                = "/health"
+        healthy_threshold   = 2
+        unhealthy_threshold = 3
       }
     }
   ]

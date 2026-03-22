@@ -2,12 +2,12 @@ locals {
   env    = "dev"
   region = "us-east-1"
 
-  # Network — single-AZ, cost-optimised
+  # Network — 2 AZs (RDS subnet group requires minimum 2)
   vpc_cidr           = "10.10.0.0/16"
-  availability_zones = ["us-east-1a"]
-  public_subnets     = ["10.10.1.0/24"]
-  private_subnets    = ["10.10.10.0/24"]
-  restricted_subnets = ["10.10.20.0/24"]
+  availability_zones = ["us-east-1a", "us-east-1b"]
+  public_subnets     = ["10.10.1.0/24",  "10.10.2.0/24"]
+  private_subnets    = ["10.10.10.0/24", "10.10.11.0/24"]
+  restricted_subnets = ["10.10.20.0/24", "10.10.21.0/24"]
   single_nat_gateway = true
 
   # RDS
