@@ -37,7 +37,7 @@
 
 ## Prompt Compliance Gaps
 - [x] **Economic impact proxy** — Census ACS `B19013_001E` median household income fetched in seed_counties → stored in `geography.counties.median_household_income` → `economic_exposure = (income_thousands) × severity_weight_sum` in compute.py → column in `risk.county_features` → feature in train.py + score.py → surfaced in ExplainPanel + InfoPanel
-- [ ] **Historical vs predicted comparison** — add a History tab or panel to the dashboard showing past model score runs per county so decision-makers can compare trend over time vs current prediction
+- [x] **Historical vs predicted comparison** — History tab in ExplainPanel shows 6-month line chart with reference line at current score, Δ change summary, and monthly trend; backed by GET /risk/history/:fips and seed_history.py for demo data
 
 ## Polish / Demo Prep
 - [ ] Seed realistic scenario definitions for demo
