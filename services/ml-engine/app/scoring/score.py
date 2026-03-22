@@ -88,9 +88,12 @@ async def score_counties(
     else:
         # Weighted composite
         weights = np.array([artifact["weights"][f] for f in FEATURE_COLUMNS])
-        probas = (X_scaled * weights).sum(axis=1)
+        weighted_features = X_scaled * weights
+        probas = weighted_features.sum(axis=1)
         importances = weights / weights.sum()
-        score_std = np.full(len(probas), 0.05)  # fixed ±5% band for composite
+        # Std of weighted contributions per county: narrow when features agree,
+        # wider when signals are mixed (proxy for model uncertainty)
+        score_std = weighted_features.std(axis=1)
 
     scores = np.clip(probas * 100, 0, 100)
     conf_lower = np.clip((probas - score_std) * 100, 0, 100)
