@@ -46,6 +46,7 @@ export interface CountyFeatures {
   max_earthquake_magnitude: number | null
   population_exposure: number
   hazard_frequency_score: number
+  economic_exposure: number | null
 }
 
 export interface CountyDetail extends RankedCounty {

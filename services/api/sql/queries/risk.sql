@@ -58,6 +58,7 @@ SELECT
     max_earthquake_magnitude,
     population_exposure,
     hazard_frequency_score,
+    economic_exposure,
     feature_date
 FROM risk.county_features f
 WHERE f.fips_code = $1
