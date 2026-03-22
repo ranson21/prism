@@ -4,8 +4,12 @@ locals {
   domain      = get_env("DOMAIN", "prism.skysolns.io")
 
   # State backend — S3 bucket and DynamoDB lock table must exist before first apply.
-  # For GovCloud: set AWS_DEFAULT_REGION=us-gov-west-1 and STATE_BUCKET accordingly.
-  state_bucket      = get_env("TF_STATE_BUCKET", "prism-terraform-state")
+  # Run `make aws-bootstrap` to create them. The bucket name is account-scoped
+  # (prism-tfstate-<account-id>) to avoid global S3 naming collisions.
+  # Export TF_STATE_BUCKET and TF_LOCK_TABLE from the bootstrap output, or set
+  # them permanently in ~/.bashrc before running any terragrunt commands.
+  # For GovCloud: set AWS_DEFAULT_REGION=us-gov-west-1 and TF_STATE_BUCKET accordingly.
+  state_bucket      = get_env("TF_STATE_BUCKET", "prism-tfstate-ACCOUNT_ID")
   state_lock_table  = get_env("TF_LOCK_TABLE",   "prism-terraform-locks")
   region            = get_env("AWS_DEFAULT_REGION", "us-east-1")
 

@@ -10,7 +10,7 @@ locals {
 dependency "alb" {
   config_path = "../alb"
   mock_outputs = {
-    arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:123456789012:loadbalancer/app/prism-stable/abc123"
+    lb_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:123456789012:loadbalancer/app/prism-stable/abc123"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
@@ -22,7 +22,7 @@ terraform {
 inputs = {
   name_prefix = "prism-${local.env.env}"
   scope       = "REGIONAL"
-  alb_arn     = dependency.alb.outputs.arn
+  alb_arn     = dependency.alb.outputs.lb_arn
 
   # AWS Managed Rule Groups — covers OWASP Top 10, known bad inputs, IP reputation
   managed_rules = [

@@ -1,3 +1,7 @@
+# Auto-load .env if present — exports all vars to sub-processes
+-include .env
+export
+
 .PHONY: bootstrap bootstrap-ml bootstrap-api bootstrap-web \
         dev dev-api dev-ml dev-web \
         test test-api test-ml test-web fmt lint clean \
@@ -6,7 +10,8 @@
         aws-install-deps aws-check aws-bootstrap aws-patch-account \
         infra-plan-dev infra-apply-dev infra-destroy-dev \
         infra-plan-test infra-apply-test infra-destroy-test \
-        ecr-login ecr-push-dev ecr-push-test
+        ecr-login ecr-push-dev ecr-push-test \
+        aws-db-migrate aws-seed-data aws-url
 
 bootstrap: bootstrap-ml bootstrap-api bootstrap-web
 
@@ -138,11 +143,13 @@ aws-install-deps:
 aws-check:
 	@aws sts get-caller-identity
 
-# Create S3 state bucket and DynamoDB lock table (run once per AWS account)
+# Create S3 state bucket and DynamoDB lock table (run once per AWS account).
+# Bucket name is scoped to your account ID to avoid global S3 naming collisions.
 aws-bootstrap:
-	$(eval REGION ?= us-east-1)
-	$(eval BUCKET ?= prism-terraform-state)
-	$(eval TABLE  ?= prism-terraform-locks)
+	$(eval REGION     ?= us-east-1)
+	$(eval ACCOUNT_ID  = $(shell aws sts get-caller-identity --query Account --output text))
+	$(eval BUCKET     ?= prism-tfstate-$(ACCOUNT_ID))
+	$(eval TABLE      ?= prism-terraform-locks)
 	@echo "→ Creating state bucket: $(BUCKET)"
 	aws s3api create-bucket --bucket $(BUCKET) --region $(REGION)
 	aws s3api put-bucket-versioning --bucket $(BUCKET) \
@@ -150,6 +157,9 @@ aws-bootstrap:
 	aws s3api put-bucket-encryption --bucket $(BUCKET) \
 	  --server-side-encryption-configuration \
 	  '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+	aws s3api put-public-access-block --bucket $(BUCKET) \
+	  --public-access-block-configuration \
+	  'BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true'
 	@echo "→ Creating lock table: $(TABLE)"
 	aws dynamodb create-table \
 	  --table-name $(TABLE) \
@@ -157,7 +167,13 @@ aws-bootstrap:
 	  --key-schema AttributeName=LockID,KeyType=HASH \
 	  --billing-mode PAY_PER_REQUEST \
 	  --region $(REGION)
-	@echo "✓ State backend ready"
+	@echo ""
+	@echo "✓ State backend ready. Export these before running terragrunt:"
+	@echo ""
+	@echo "  export TF_STATE_BUCKET=$(BUCKET)"
+	@echo "  export TF_LOCK_TABLE=$(TABLE)"
+	@echo ""
+	@echo "Add them to your ~/.bashrc or ~/.zshrc to make them permanent."
 
 # Replace ACCOUNT_ID placeholder in ECS configs with the real AWS account ID
 aws-patch-account:
@@ -171,36 +187,54 @@ aws-patch-account:
 # ── Infra: dev ────────────────────────────────────────────────────────────────
 
 infra-plan-dev:
-	cd environments/dev && terragrunt run-all plan
+	# ECS/WAF are excluded from plan-all: ECS does real subnet data-source lookups
+	# that fail with mock IDs; both will plan correctly once VPC is applied.
+	cd environments/dev/vpc        && terragrunt plan --terragrunt-non-interactive
+	cd environments/dev/sg         && terragrunt plan --terragrunt-non-interactive
+	cd environments/dev/s3         && terragrunt plan --terragrunt-non-interactive
+	cd environments/dev/ecr        && terragrunt plan --terragrunt-non-interactive
+	cd environments/dev/rds        && terragrunt plan --terragrunt-non-interactive
+	cd environments/dev/alb        && terragrunt plan --terragrunt-non-interactive
+	cd environments/dev/cloudfront && terragrunt plan --terragrunt-non-interactive
 
 infra-apply-dev:
-	cd environments/dev/vpc && terragrunt apply -auto-approve
-	cd environments/dev/s3  && terragrunt apply -auto-approve
-	cd environments/dev/ecr && terragrunt apply -auto-approve
-	cd environments/dev/rds && terragrunt apply -auto-approve
-	cd environments/dev/alb && terragrunt apply -auto-approve
-	cd environments/dev/waf && terragrunt apply -auto-approve
-	cd environments/dev/ecs && terragrunt apply -auto-approve
+	cd environments/dev/vpc        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/dev/sg         && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/dev/s3         && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/dev/ecr        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/dev/rds        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/dev/alb        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/dev/waf        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/dev/ecs        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/dev/cloudfront && terragrunt apply -auto-approve --terragrunt-non-interactive
 
 infra-destroy-dev:
-	cd environments/dev && terragrunt run-all destroy
+	cd environments/dev && terragrunt run-all destroy --terragrunt-non-interactive
 
 # ── Infra: test ───────────────────────────────────────────────────────────────
 
 infra-plan-test:
-	cd environments/test && terragrunt run-all plan
+	cd environments/test/vpc        && terragrunt plan --terragrunt-non-interactive
+	cd environments/test/sg         && terragrunt plan --terragrunt-non-interactive
+	cd environments/test/s3         && terragrunt plan --terragrunt-non-interactive
+	cd environments/test/ecr        && terragrunt plan --terragrunt-non-interactive
+	cd environments/test/rds        && terragrunt plan --terragrunt-non-interactive
+	cd environments/test/alb        && terragrunt plan --terragrunt-non-interactive
+	cd environments/test/cloudfront && terragrunt plan --terragrunt-non-interactive
 
 infra-apply-test:
-	cd environments/test/vpc && terragrunt apply -auto-approve
-	cd environments/test/s3  && terragrunt apply -auto-approve
-	cd environments/test/ecr && terragrunt apply -auto-approve
-	cd environments/test/rds && terragrunt apply -auto-approve
-	cd environments/test/alb && terragrunt apply -auto-approve
-	cd environments/test/waf && terragrunt apply -auto-approve
-	cd environments/test/ecs && terragrunt apply -auto-approve
+	cd environments/test/vpc        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/test/sg         && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/test/s3         && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/test/ecr        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/test/rds        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/test/alb        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/test/waf        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/test/ecs        && terragrunt apply -auto-approve --terragrunt-non-interactive
+	cd environments/test/cloudfront && terragrunt apply -auto-approve --terragrunt-non-interactive
 
 infra-destroy-test:
-	cd environments/test && terragrunt run-all destroy
+	cd environments/test && terragrunt run-all destroy --terragrunt-non-interactive
 
 # ── ECR image push ────────────────────────────────────────────────────────────
 
@@ -232,3 +266,59 @@ ecr-push-test: ecr-login
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ui:latest
+
+# ── Seeding & data pipeline ───────────────────────────────────────────────────
+
+# Run SQL migrations directly against RDS.
+# Temporarily opens port 5432 from your local IP, runs psql, then closes it.
+# RDS manages the DB password in Secrets Manager — fetched here via terragrunt output.
+aws-db-migrate:
+	$(eval ENV        ?= dev)
+	$(eval REGION     ?= us-east-1)
+	$(eval RDS_HOST    = $(shell cd environments/$(ENV)/rds && terragrunt output -raw db_instance_address --terragrunt-non-interactive 2>/dev/null))
+	$(eval RDS_SG      = $(shell cd environments/$(ENV)/sg  && terragrunt output -raw rds_sg_id --terragrunt-non-interactive 2>/dev/null))
+	$(eval SECRET_ARN  = $(shell cd environments/$(ENV)/rds && terragrunt output -raw db_instance_master_user_secret_arn --terragrunt-non-interactive 2>/dev/null))
+	$(eval MY_IP       = $(shell curl -s https://checkip.amazonaws.com))
+	$(eval DB_PASS     = $(shell aws secretsmanager get-secret-value --secret-id "$(SECRET_ARN)" --query SecretString --output text --region $(REGION) | python3 -c "import sys,json; print(json.load(sys.stdin)['password'])"))
+	@echo "→ Opening RDS to $(MY_IP)/32 temporarily..."
+	aws ec2 authorize-security-group-ingress \
+	  --group-id $(RDS_SG) --protocol tcp --port 5432 --cidr $(MY_IP)/32 --region $(REGION)
+	@echo "→ Running migrations..."
+	for f in $$(ls environments/local/migrations/*.sql | sort); do \
+	  echo "  $$f"; \
+	  PGPASSWORD=$(DB_PASS) psql -h $(RDS_HOST) -U prism -d prism -f $$f; \
+	done
+	@echo "→ Closing temporary SG rule..."
+	aws ec2 revoke-security-group-ingress \
+	  --group-id $(RDS_SG) --protocol tcp --port 5432 --cidr $(MY_IP)/32 --region $(REGION)
+	@echo "✓ Migrations complete"
+
+# Seed counties and run the full ML pipeline via ECS Exec into the ml-engine task.
+# Requires: ECS stack deployed, images pushed, tasks running.
+aws-seed-data:
+	$(eval ENV    ?= dev)
+	$(eval REGION ?= us-east-1)
+	$(eval CLUSTER = prism-$(ENV))
+	$(eval TASK_ARN = $(shell aws ecs list-tasks --cluster $(CLUSTER) --service-name ml-engine \
+	  --query 'taskArns[0]' --output text --region $(REGION)))
+	@echo "→ Seeding counties..."
+	aws ecs execute-command --cluster $(CLUSTER) --task $(TASK_ARN) --container ml-engine \
+	  --command "python -m app.geography.seed_counties" --interactive --region $(REGION)
+	@echo "→ Running ingest..."
+	aws ecs execute-command --cluster $(CLUSTER) --task $(TASK_ARN) --container ml-engine \
+	  --command "python -m app.ingestion.ingest" --interactive --region $(REGION)
+	@echo "→ Building features..."
+	aws ecs execute-command --cluster $(CLUSTER) --task $(TASK_ARN) --container ml-engine \
+	  --command "python -m app.features.build" --interactive --region $(REGION)
+	@echo "→ Training model..."
+	aws ecs execute-command --cluster $(CLUSTER) --task $(TASK_ARN) --container ml-engine \
+	  --command "python -m app.scoring.train" --interactive --region $(REGION)
+	@echo "→ Scoring counties..."
+	aws ecs execute-command --cluster $(CLUSTER) --task $(TASK_ARN) --container ml-engine \
+	  --command "python -m app.scoring.score" --interactive --region $(REGION)
+	@echo "✓ Pipeline complete"
+
+# Print the shareable CloudFront URL for an environment
+aws-url:
+	$(eval ENV ?= dev)
+	@echo "https://$$(cd environments/$(ENV)/cloudfront && terragrunt output -raw cloudfront_domain_name --terragrunt-non-interactive 2>/dev/null)"
