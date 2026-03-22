@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-base: #0F172A;
+  --color-bg-panel: #111827;
+  --color-bg-card: #1F2937;
+  --color-risk-low: #22c55e;
+  --color-risk-moderate: #eab308;
+  --color-risk-elevated: #f97316;
+  --color-risk-critical: #ef4444;
+}
+
+body {
+  background-color: #0F172A;
+  color: #f8fafc;
+  font-family: system-ui, sans-serif;
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
