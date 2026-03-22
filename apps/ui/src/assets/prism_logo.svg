@@ -8,5 +8,5 @@
   <!-- Outgoing beams (risk signals) -->
   <line x1="44" y1="32" x2="62" y2="20" stroke="#22C55E" stroke-width="2" stroke-linecap="round"/>
   <line x1="44" y1="32" x2="62" y2="32" stroke="#EAB308" stroke-width="2" stroke-linecap="round"/>
-  <line x1="44" y1="32" x2="62" y2="44" stroke="#DC2626" stroke-width="2" stroke-linecap="round"/>
+  <line x1="44" y1="32" x2="62" y2="44" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
 </svg>
