@@ -5,6 +5,7 @@ SELECT
 FROM risk.scores s
 JOIN risk.model_versions mv ON mv.id = s.model_version_id
 WHERE mv.active = true
+  AND s.score_date = (SELECT MAX(score_date) FROM risk.scores WHERE model_version_id = mv.id)
 GROUP BY s.risk_level;
 
 -- name: GetRankings :many
@@ -22,6 +23,7 @@ FROM risk.scores s
 JOIN geography.counties c USING (fips_code)
 JOIN risk.model_versions mv ON mv.id = s.model_version_id
 WHERE mv.active = true
+  AND s.score_date = (SELECT MAX(score_date) FROM risk.scores WHERE model_version_id = mv.id)
 ORDER BY s.risk_score DESC
 LIMIT $1 OFFSET $2;
 
@@ -29,7 +31,8 @@ LIMIT $1 OFFSET $2;
 SELECT COUNT(*)::int AS total
 FROM risk.scores s
 JOIN risk.model_versions mv ON mv.id = s.model_version_id
-WHERE mv.active = true;
+WHERE mv.active = true
+  AND s.score_date = (SELECT MAX(score_date) FROM risk.scores WHERE model_version_id = mv.id);
 
 -- name: GetCountyScore :one
 SELECT
@@ -47,7 +50,17 @@ FROM risk.scores s
 JOIN geography.counties c USING (fips_code)
 JOIN risk.model_versions mv ON mv.id = s.model_version_id
 WHERE s.fips_code = $1
-  AND mv.active = true;
+  AND mv.active = true
+  AND s.score_date = (SELECT MAX(score_date) FROM risk.scores WHERE model_version_id = mv.id);
+
+-- name: GetCountyHistory :many
+SELECT score_date, risk_score, risk_level
+FROM risk.scores s
+JOIN risk.model_versions mv ON mv.id = s.model_version_id
+WHERE s.fips_code = $1
+  AND mv.active = true
+ORDER BY score_date ASC
+LIMIT 90;
 
 -- name: GetCountyFeatures :one
 SELECT
