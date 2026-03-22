@@ -1,0 +1,145 @@
+include "root" {
+  path = find_in_parent_folders()
+}
+
+locals {
+  env_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
+  env      = local.env_vars.locals
+}
+
+dependency "vpc" {
+  config_path = "../vpc"
+  mock_outputs = {
+    vpc_id          = "vpc-00000000"
+    private_subnets = ["subnet-00000001", "subnet-00000002", "subnet-00000003"]
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+dependency "alb" {
+  config_path = "../alb"
+  mock_outputs = {
+    target_groups = { ui = { arn = "arn:aws-us-gov:..." }, api = { arn = "arn:aws-us-gov:..." } }
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+dependency "rds" {
+  config_path = "../rds"
+  mock_outputs = {
+    db_instance_endpoint = "prism-stable.abc123.us-gov-west-1.rds.amazonaws.com"
+    db_instance_port     = 5432
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+dependency "s3" {
+  config_path = "../s3"
+  mock_outputs = {
+    s3_bucket_id = "prism-stable-ml-artifacts"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+terraform {
+  source = "tfr:///terraform-aws-modules/ecs/aws?version=5.11.4"
+}
+
+inputs = {
+  cluster_name = "prism-${local.env.env}"
+
+  cluster_settings = {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+
+  fargate_capacity_providers = {
+    FARGATE = {
+      default_capacity_provider_strategy = {
+        weight = local.env.use_fargate_spot ? 20 : 100
+      }
+    }
+    FARGATE_SPOT = {
+      default_capacity_provider_strategy = {
+        weight = local.env.use_fargate_spot ? 80 : 0
+      }
+    }
+  }
+
+  services = {
+    # ── Go REST API ──────────────────────────────────────────────────────────
+    api = {
+      cpu    = local.env.api_cpu
+      memory = local.env.api_memory
+
+      container_definitions = {
+        api = {
+          image     = "ACCOUNT_ID.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-api:latest"
+          essential = true
+          port_mappings = [{ containerPort = 8080, protocol = "tcp" }]
+          environment = [
+            { name = "DATABASE_URL", value = "postgresql://prism@${dependency.rds.outputs.db_instance_endpoint}:5432/prism" }
+          ]
+          secrets = [
+            { name = "DB_PASSWORD", valueFrom = "arn:aws-us-gov:secretsmanager:${local.env.region}:ACCOUNT_ID:secret:prism-${local.env.env}-db-password" }
+          ]
+        }
+      }
+
+      subnet_ids = dependency.vpc.outputs.private_subnets
+      load_balancer = {
+        service = {
+          target_group_arn = dependency.alb.outputs.target_groups["api"].arn
+          container_name   = "api"
+          container_port   = 8080
+        }
+      }
+    }
+
+    # ── Python ML Engine ─────────────────────────────────────────────────────
+    ml-engine = {
+      cpu    = local.env.ml_cpu
+      memory = local.env.ml_memory
+
+      container_definitions = {
+        ml-engine = {
+          image     = "ACCOUNT_ID.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-ml-engine:latest"
+          essential = true
+          port_mappings = [{ containerPort = 8001, protocol = "tcp" }]
+          environment = [
+            { name = "DATABASE_URL",       value = "postgresql://prism@${dependency.rds.outputs.db_instance_endpoint}:5432/prism" },
+            { name = "ARTIFACT_S3_BUCKET", value = dependency.s3.outputs.s3_bucket_id }
+          ]
+          secrets = [
+            { name = "DB_PASSWORD", valueFrom = "arn:aws-us-gov:secretsmanager:${local.env.region}:ACCOUNT_ID:secret:prism-${local.env.env}-db-password" }
+          ]
+        }
+      }
+
+      subnet_ids = dependency.vpc.outputs.private_subnets
+    }
+
+    # ── React UI ─────────────────────────────────────────────────────────────
+    ui = {
+      cpu    = local.env.ui_cpu
+      memory = local.env.ui_memory
+
+      container_definitions = {
+        ui = {
+          image     = "ACCOUNT_ID.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-ui:latest"
+          essential = true
+          port_mappings = [{ containerPort = 3000, protocol = "tcp" }]
+        }
+      }
+
+      subnet_ids = dependency.vpc.outputs.private_subnets
+      load_balancer = {
+        service = {
+          target_group_arn = dependency.alb.outputs.target_groups["ui"].arn
+          container_name   = "ui"
+          container_port   = 3000
+        }
+      }
+    }
+  }
+}
