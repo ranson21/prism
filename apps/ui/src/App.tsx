@@ -26,7 +26,7 @@ export default function App() {
   const [focusSelected, setFocusSelected] = useState(false)
 
   const { data: summary } = useGetSummaryQuery()
-  const { data: rankings, isLoading } = useGetRankingsQuery({ limit: 100 })
+  const { data: rankings, isLoading } = useGetRankingsQuery({ limit: 3500 })
 
   const counties = rankings?.rankings ?? []
 
@@ -135,7 +135,7 @@ export default function App() {
           <div className="flex-1 min-h-0 grid grid-cols-[360px_300px_1fr] gap-4">
             {/* Rankings Table */}
             <RankingsTable
-              rankings={counties}
+              rankings={counties.slice(0, 100)}
               selectedFips={selectedFips}
               onSelect={setSelectedFips}
             />

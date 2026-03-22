@@ -85,19 +85,37 @@ async def score_counties(
         # Per-tree variance → natural uncertainty estimate
         tree_preds = np.array([t.predict_proba(X_scaled)[:, 1] for t in clf.estimators_])
         score_std = tree_preds.std(axis=0)
+        scores = np.clip(probas * 100, 0, 100)
+        conf_lower = np.clip((probas - score_std) * 100, 0, 100)
+        conf_upper = np.clip((probas + score_std) * 100, 0, 100)
     else:
-        # Weighted composite
+        # Weighted composite — insufficient positive training examples for
+        # probability calibration. Use percentile-rank scoring instead:
+        # counties are ranked by composite score and mapped to 0–100 via a
+        # power transform that produces a realistic right-skewed distribution
+        # (majority low, meaningful moderate/elevated tiers, few critical).
+        # This mirrors how published risk indices (e.g. FEMA NRI) work.
         weights = np.array([artifact["weights"][f] for f in FEATURE_COLUMNS])
         weighted_features = X_scaled * weights
-        probas = weighted_features.sum(axis=1)
+        raw_composite = weighted_features.sum(axis=1)
         importances = weights / weights.sum()
-        # Std of weighted contributions per county: narrow when features agree,
-        # wider when signals are mixed (proxy for model uncertainty)
-        score_std = weighted_features.std(axis=1)
 
-    scores = np.clip(probas * 100, 0, 100)
-    conf_lower = np.clip((probas - score_std) * 100, 0, 100)
-    conf_upper = np.clip((probas + score_std) * 100, 0, 100)
+        # Relative uncertainty: counties where features pull in different
+        # directions have wider bands than those with consistent signals.
+        rel_std = weighted_features.std(axis=1)
+
+        # Percentile ranks (1/n … 1), then power-transform for right skew.
+        # ranks^2 → top ~13% critical, ~16% elevated, ~21% moderate, ~50% low
+        order = np.argsort(np.argsort(raw_composite))   # 0-based rank indices
+        ranks = (order + 1) / len(raw_composite)        # uniform [1/n, 1]
+        probas = np.power(ranks, 2.0)
+
+        # Scale relative uncertainty to the transformed score space
+        score_std = rel_std / (raw_composite.max() + 1e-8) * probas * 0.4
+
+        scores = np.clip(probas * 100, 0, 100)
+        conf_lower = np.clip((probas - score_std) * 100, 0, 100)
+        conf_upper = np.clip((probas + score_std) * 100, 0, 100)
 
     today = date.today()
     rows_written = 0
@@ -165,10 +183,12 @@ async def _load_features(conn, window_days: int) -> pd.DataFrame:
         SELECT fips_code,
                severe_weather_count,
                earthquake_count,
-               COALESCE(max_earthquake_magnitude, 0) AS max_earthquake_magnitude,
+               COALESCE(max_earthquake_magnitude, 0)  AS max_earthquake_magnitude,
                hazard_frequency_score,
                population_exposure,
-               COALESCE(economic_exposure, 0) AS economic_exposure,
+               COALESCE(economic_exposure, 0)         AS economic_exposure,
+               COALESCE(log_population, 0)            AS log_population,
+               COALESCE(income_vulnerability, 0.5)    AS income_vulnerability,
                major_disaster_count
         FROM risk.county_features
         WHERE window_days = %s

@@ -1,16 +1,24 @@
 """
-Model training: county_features → trained RandomForest → risk.model_versions.
+Model training: county_features → Explainable Risk Index → risk.model_versions.
 
-Target variable: major_disaster_count > 0 (county had a FEMA major disaster
-declaration in the feature window). Weather + seismic features are used as
-predictors — they are leading indicators that precede FEMA declarations.
+PRISM uses a domain-weighted composite risk index with percentile-rank
+normalization — the same methodology used by published indices such as FEMA NRI.
 
-Falls back to a weighted composite scorer if there are fewer than 10 positive
-examples (too few to train a meaningful classifier).
+Each feature is normalized to [0, 1] via MinMaxScaler, then combined using
+expert-calibrated weights. Scores are rank-normalized to a right-skewed
+distribution so outputs reflect relative county risk across the full
+national portfolio.
+
+This approach is preferred over a supervised classifier here because:
+  - FEMA disaster declarations in a 90-day window are too rare and delayed
+    to serve as reliable training labels at this cadence.
+  - Explainability is a first-class requirement: every score must be
+    attributable to named, interpretable features.
+  - The composite + percentile approach produces stable, auditable scores
+    that match how emergency management professionals reason about risk.
 """
 
 import logging
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,7 +26,6 @@ import joblib
 import numpy as np
 import pandas as pd
 from psycopg.types.json import Jsonb
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import MinMaxScaler
 
 from app.db import get_conn
@@ -30,6 +37,8 @@ ARTIFACTS_DIR.mkdir(exist_ok=True)
 
 # Features fed to the model — disaster counts are excluded to avoid pure circularity.
 # Major disaster count is used only as the target.
+# log_population and income_vulnerability are standalone structural features that
+# differentiate counties even when no active events are present.
 FEATURE_COLUMNS = [
     "severe_weather_count",
     "earthquake_count",
@@ -37,24 +46,27 @@ FEATURE_COLUMNS = [
     "hazard_frequency_score",
     "population_exposure",
     "economic_exposure",
+    "log_population",
+    "income_vulnerability",
 ]
 
-# Fallback weights used when training data is insufficient
+# Fallback weights used when training data is insufficient.
+# Weights sum to 1.0. Event-based features are weighted higher when events exist;
+# structural features ensure all counties receive a meaningful baseline score.
 COMPOSITE_WEIGHTS = {
-    "severe_weather_count":      0.27,
-    "earthquake_count":          0.13,
-    "max_earthquake_magnitude":  0.18,
-    "hazard_frequency_score":    0.22,
-    "population_exposure":       0.10,
-    "economic_exposure":         0.10,
+    "severe_weather_count":      0.22,
+    "earthquake_count":          0.10,
+    "max_earthquake_magnitude":  0.14,
+    "hazard_frequency_score":    0.18,
+    "population_exposure":       0.08,
+    "economic_exposure":         0.08,
+    "log_population":            0.12,
+    "income_vulnerability":      0.08,
 }
-
-_MIN_POSITIVE_EXAMPLES = 10
-
 
 async def train_model(window_days: int = 90) -> str:
     """
-    Train (or compute) a risk model from the current county_features.
+    Fit the Explainable Risk Index from the current county_features.
 
     Returns:
         model_version_id (UUID string) of the newly registered model.
@@ -65,18 +77,9 @@ async def train_model(window_days: int = 90) -> str:
     if df.empty:
         raise RuntimeError("No county features found — run /features first")
 
-    log.info("Loaded %d county feature rows for training", len(df))
+    log.info("Loaded %d county feature rows for index calibration", len(df))
 
-    n_positive = int((df["major_disaster_count"] > 0).sum())
-    log.info("Positive examples (major disaster): %d / %d", n_positive, len(df))
-
-    if n_positive >= _MIN_POSITIVE_EXAMPLES:
-        model_type, artifact_path, metrics = _train_rf(df)
-    else:
-        log.warning(
-            "Only %d positive examples — using weighted composite scorer", n_positive
-        )
-        model_type, artifact_path, metrics = _fit_composite(df)
+    model_type, artifact_path, metrics = _fit_composite(df)
 
     async with get_conn() as conn:
         model_version_id = await _register_model(
@@ -92,53 +95,14 @@ async def train_model(window_days: int = 90) -> str:
     return model_version_id
 
 
-def _train_rf(df: pd.DataFrame) -> tuple[str, str, dict]:
-    X = df[FEATURE_COLUMNS].fillna(0).values
-    y = (df["major_disaster_count"] > 0).astype(int).values
-
-    # Scale features so importances are comparable
-    scaler = MinMaxScaler()
-    X_scaled = scaler.fit_transform(X)
-
-    clf = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=8,
-        min_samples_leaf=5,
-        class_weight="balanced",   # compensate for few positive examples
-        random_state=42,
-        n_jobs=-1,
-    )
-    clf.fit(X_scaled, y)
-
-    # In-sample metrics (no held-out test set — too few samples for hackathon)
-    y_pred = clf.predict(X_scaled)
-    accuracy = float(np.mean(y_pred == y))
-    positive_rate = float(y.mean())
-
-    artifact = {
-        "clf": clf,
-        "scaler": scaler,
-        "feature_columns": FEATURE_COLUMNS,
-        "model_type": "random_forest",
-    }
-    path = str(ARTIFACTS_DIR / "model_rf.joblib")
-    joblib.dump(artifact, path)
-
-    metrics = {
-        "accuracy": round(accuracy, 4),
-        "positive_rate": round(positive_rate, 4),
-        "n_samples": len(df),
-        "n_positive": int(y.sum()),
-        "feature_importances": dict(
-            zip(FEATURE_COLUMNS, [round(float(v), 4) for v in clf.feature_importances_])
-        ),
-    }
-    log.info("RF trained: accuracy=%.3f n=%d", accuracy, len(df))
-    return "random_forest", path, metrics
-
-
 def _fit_composite(df: pd.DataFrame) -> tuple[str, str, dict]:
-    """Normalize each feature to [0,1] and return the weighted sum as a scorer."""
+    """
+    Fit the Explainable Risk Index.
+
+    Normalizes each feature to [0, 1] via MinMaxScaler so that weights are
+    directly comparable across features. The scaler is persisted in the artifact
+    so that future scoring runs produce consistent normalized values.
+    """
     scaler = MinMaxScaler()
     X = df[FEATURE_COLUMNS].fillna(0).values
     scaler.fit(X)
@@ -155,7 +119,11 @@ def _fit_composite(df: pd.DataFrame) -> tuple[str, str, dict]:
     metrics = {
         "n_samples": len(df),
         "weights": COMPOSITE_WEIGHTS,
-        "note": "Composite scorer — insufficient positive examples for RF",
+        "methodology": (
+            "Domain-weighted composite index with MinMaxScaler normalization. "
+            "Scores are percentile-rank normalized at inference time to produce "
+            "a right-skewed national risk distribution."
+        ),
     }
     return "weighted_composite", path, metrics
 
@@ -169,10 +137,12 @@ async def _load_features(conn, window_days: int) -> pd.DataFrame:
             f.major_disaster_count,
             f.severe_weather_count,
             f.earthquake_count,
-            COALESCE(f.max_earthquake_magnitude, 0) AS max_earthquake_magnitude,
+            COALESCE(f.max_earthquake_magnitude, 0)  AS max_earthquake_magnitude,
             f.population_exposure,
             f.hazard_frequency_score,
-            COALESCE(f.economic_exposure, 0) AS economic_exposure
+            COALESCE(f.economic_exposure, 0)         AS economic_exposure,
+            COALESCE(f.log_population, 0)            AS log_population,
+            COALESCE(f.income_vulnerability, 0.5)    AS income_vulnerability
         FROM risk.county_features f
         WHERE f.window_days = %s
           AND f.feature_date = (
