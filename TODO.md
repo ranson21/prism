@@ -70,6 +70,13 @@ _Required for Demo Clarity and Mission Relevance judging._
 - [ ] **5-minute "Path to Agency Pilot" briefing** — slide deck or one-pager covering: problem statement, PRISM solution overview, live demo flow, agency adoption path, and responsible AI commitments; store in `docs/agency_pilot_brief.md` or `docs/pitch/`
 - [ ] Demo script / talking points aligned to judging narrative: "Where should we act right now, and why?"
 
+## UI — Agency Pilot & Responsible AI Gaps
+_Site currently has no in-app narrative for agency adoption or visible responsible AI commitments._
+
+- [x] **About / Mission modal or tab** — 1-screen in-app narrative covering: problem statement (agencies overwhelmed during disasters), how PRISM fits into FEMA/EOC workflow, and the path to agency pilot; should be accessible from the main nav/header
+- [x] **Responsible AI callout** — visible banner or panel on the dashboard (not buried in simulator help modal) surfacing: data sources (FEMA, NWS, USGS, Census), uncertainty communication, and non-deterministic framing; directly supports Explainability & Responsible AI judging criterion
+- [x] **Expansion path visibility** — at minimum a note in the About modal or footer linking to the Phase 1 → Phase 2 arc so judges see the scale path without leaving the app
+
 ---
 
 ## Judging Criteria Alignment Checklist
