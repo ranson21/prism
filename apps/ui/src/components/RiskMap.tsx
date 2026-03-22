@@ -9,9 +9,11 @@ interface Props {
   rankings: RankedCounty[]
   selectedFips: string | null
   onSelect: (fips: string) => void
+  highlightFips?: Set<string>
+  focusHighlighted?: boolean
 }
 
-export function RiskMap({ rankings, selectedFips, onSelect }: Props) {
+export function RiskMap({ rankings, selectedFips, onSelect, highlightFips, focusHighlighted }: Props) {
   const scoreByFips = new Map(rankings.map((r) => [r.fips_code, r]))
 
   return (
@@ -20,11 +22,12 @@ export function RiskMap({ rankings, selectedFips, onSelect }: Props) {
         <Geographies geography={GEO_URL}>
           {({ geographies }: { geographies: any[] }) =>
             geographies.map((geo: any) => {
-              // TopoJSON county IDs are zero-padded 5-digit FIPS
               const fips = geo.id.toString().padStart(5, '0')
               const county = scoreByFips.get(fips)
               const level = county?.risk_level as RiskLevel | undefined
               const isSelected = fips === selectedFips
+              const isHighlighted = highlightFips?.has(fips) ?? false
+              const dimmed = focusHighlighted && highlightFips && highlightFips.size > 0 && !isHighlighted
 
               return (
                 <Geography
@@ -33,17 +36,17 @@ export function RiskMap({ rankings, selectedFips, onSelect }: Props) {
                   onClick={() => county && onSelect(fips)}
                   style={{
                     default: {
-                      fill: level ? riskColor(level) : '#1F2937',
-                      fillOpacity: level ? 0.85 : 0.4,
-                      stroke: isSelected ? '#f8fafc' : '#0F172A',
-                      strokeWidth: isSelected ? 1.5 : 0.3,
+                      fill: dimmed ? '#1F2937' : (level ? riskColor(level) : '#1F2937'),
+                      fillOpacity: dimmed ? 0.15 : level ? (isHighlighted ? 1 : 0.85) : 0.4,
+                      stroke: isHighlighted ? '#38bdf8' : isSelected ? '#f8fafc' : '#0F172A',
+                      strokeWidth: isHighlighted ? 1.5 : isSelected ? 1.5 : 0.3,
                       outline: 'none',
-                      cursor: county ? 'pointer' : 'default',
+                      cursor: county ? 'pointer' : 'not-allowed',
                     },
                     hover: {
-                      fill: level ? riskColor(level) : '#374151',
-                      fillOpacity: 1,
-                      stroke: '#f8fafc',
+                      fill: dimmed ? '#1F2937' : (level ? riskColor(level) : '#374151'),
+                      fillOpacity: dimmed ? 0.25 : 1,
+                      stroke: isHighlighted ? '#7dd3fc' : '#f8fafc',
                       strokeWidth: 0.8,
                       outline: 'none',
                     },

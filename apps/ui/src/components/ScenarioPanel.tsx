@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { useSimulateMutation, type SimResult } from '../store/api'
+import { RotateCcw, Info } from 'lucide-react'
+import { useSimulateMutation, type SimResult, type RankedCounty } from '../store/api'
 import { RiskBadge } from './RiskBadge'
 import { riskColor } from '../lib/risk'
+import { InfoPanel } from './InfoPanel'
 
 const PRESETS = [
   { label: 'Category 5 Hurricane', multiplier: 3.5, description: 'Major hurricane landfalls across Gulf and Atlantic coast counties' },
@@ -12,12 +14,17 @@ const PRESETS = [
 
 interface Props {
   onResults: (results: SimResult[] | null) => void
+  onReset: () => void
+  selectedCounties: RankedCounty[]
+  onToggleCounty: (fips: string) => void
+  onClearCounties: () => void
 }
 
-export function ScenarioPanel({ onResults }: Props) {
+export function ScenarioPanel({ onResults, onReset, selectedCounties, onToggleCounty, onClearCounties }: Props) {
   const [simulate, { isLoading, data, reset }] = useSimulateMutation()
   const [multiplier, setMultiplier] = useState(2.0)
   const [scenarioName, setScenarioName] = useState('Custom Scenario')
+  const [showInfo, setShowInfo] = useState(false)
 
   function applyPreset(preset: typeof PRESETS[number]) {
     setMultiplier(preset.multiplier)
@@ -25,23 +32,49 @@ export function ScenarioPanel({ onResults }: Props) {
   }
 
   async function run() {
-    const result = await simulate({ name: scenarioName, severity_multiplier: multiplier })
+    const body = {
+      name: scenarioName,
+      severity_multiplier: multiplier,
+      ...(selectedCounties.length > 0 && { fips_codes: selectedCounties.map((c) => c.fips_code) }),
+    }
+    const result = await simulate(body)
     if ('data' in result && result.data) onResults(result.data.results)
   }
 
-  function clear() {
+  function handleReset() {
     reset()
-    onResults(null)
+    onReset()
   }
 
   return (
+    <>
+    {showInfo && <InfoPanel onClose={() => setShowInfo(false)} />}
     <div className="rounded-xl bg-[#111827] border border-white/10 overflow-hidden flex flex-col h-full">
       {/* Header */}
       <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-100">Scenario Simulator</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Apply severity multipliers and compare against baseline</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowInfo((v) => !v)}
+            className={`cursor-pointer transition-colors ${showInfo ? 'text-sky-400' : 'text-slate-500 hover:text-slate-300'}`}
+            aria-label="How the scenario simulator works"
+          >
+            <Info size={16} />
+          </button>
+          <div>
+            <h2 className="text-base font-semibold text-slate-100">Scenario Simulator</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Apply severity multipliers and compare against baseline</p>
+          </div>
         </div>
+        <button
+          onClick={handleReset}
+          disabled={!data}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors
+            disabled:opacity-30 disabled:cursor-not-allowed
+            bg-red-900/40 text-red-400 hover:bg-red-900/70 hover:text-red-300 disabled:hover:bg-red-900/40 disabled:hover:text-red-400"
+        >
+          <RotateCcw size={13} />
+          Reset
+        </button>
       </div>
 
       <div className="px-4 py-4 border-b border-white/10 space-y-4">
@@ -53,7 +86,7 @@ export function ScenarioPanel({ onResults }: Props) {
               <button
                 key={p.label}
                 onClick={() => applyPreset(p)}
-                className="text-left rounded-lg bg-[#1F2937] hover:bg-[#374151] px-3 py-2 transition-colors"
+                className="text-left rounded-lg bg-[#1F2937] hover:bg-[#374151] px-3 py-2 transition-colors cursor-pointer"
               >
                 <p className="text-xs font-medium text-slate-200">{p.label}</p>
                 <p className="text-[10px] text-slate-500 mt-0.5">{p.multiplier}× severity</p>
@@ -93,10 +126,45 @@ export function ScenarioPanel({ onResults }: Props) {
           </div>
         </div>
 
+        {/* County selection */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-slate-400 uppercase tracking-wider">
+              Target Counties
+              <span className="ml-2 normal-case text-slate-500">
+                {selectedCounties.length === 0 ? '— all counties' : `${selectedCounties.length} selected`}
+              </span>
+            </p>
+            {selectedCounties.length > 0 && (
+              <button onClick={onClearCounties} className="text-xs text-slate-500 hover:text-slate-300 cursor-pointer">
+                Clear
+              </button>
+            )}
+          </div>
+          {selectedCounties.length === 0 ? (
+            <p className="text-[11px] text-slate-600 bg-[#1F2937] rounded-lg px-3 py-2">
+              Click counties on the map to target specific areas, or leave empty to simulate all.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+              {selectedCounties.map((c) => (
+                <button
+                  key={c.fips_code}
+                  onClick={() => onToggleCounty(c.fips_code)}
+                  className="inline-flex items-center gap-1 bg-sky-900/50 border border-sky-500/30 text-sky-300 text-[11px] rounded px-2 py-0.5 cursor-pointer hover:bg-sky-900 transition-colors"
+                >
+                  {c.county_name}, {c.state_abbr}
+                  <span className="text-sky-500 leading-none">×</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <button
           onClick={run}
           disabled={isLoading || !scenarioName.trim()}
-          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
         >
           {isLoading ? 'Running simulation…' : 'Run Simulation'}
         </button>
@@ -104,10 +172,9 @@ export function ScenarioPanel({ onResults }: Props) {
 
       {/* Results */}
       {data && (
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+        <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+          <div className="px-4 py-3 border-b border-white/10 shrink-0">
             <p className="text-xs text-slate-400 uppercase tracking-wider">{data.name} — {data.total} counties</p>
-            <button onClick={clear} className="text-xs text-slate-500 hover:text-slate-300">Clear</button>
           </div>
           <div className="divide-y divide-white/5">
             {data.results.slice(0, 50).map((r) => (
@@ -117,6 +184,7 @@ export function ScenarioPanel({ onResults }: Props) {
         </div>
       )}
     </div>
+    </>
   )
 }
 
