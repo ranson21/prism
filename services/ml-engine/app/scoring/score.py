@@ -154,6 +154,7 @@ async def _load_features(conn, window_days: int) -> pd.DataFrame:
                COALESCE(max_earthquake_magnitude, 0) AS max_earthquake_magnitude,
                hazard_frequency_score,
                population_exposure,
+               COALESCE(economic_exposure, 0) AS economic_exposure,
                major_disaster_count
         FROM risk.county_features
         WHERE window_days = %s

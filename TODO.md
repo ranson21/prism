@@ -35,6 +35,10 @@
 - [x] Scenario comparison view (baseline vs simulated)
 - [x] Copy the PRISM logo from the root into its appropriate folder and remove from root
 
+## Prompt Compliance Gaps
+- [ ] **Economic impact proxy** — document `major_disaster_count` as economic proxy in InfoPanel (FEMA major declarations require $$ damage thresholds); add it to the feature list in ExplainPanel raw counts
+- [ ] **Historical vs predicted comparison** — add a History tab or panel to the dashboard showing past model score runs per county so decision-makers can compare trend over time vs current prediction
+
 ## Polish / Demo Prep
 - [ ] Seed realistic scenario definitions for demo
 - [ ] End-to-end smoke test (ingest → score → API → UI)

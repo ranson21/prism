@@ -79,6 +79,7 @@ async def _aggregate_events(
         SELECT
             e.fips_code,
             c.population,
+            c.median_household_income,
             COUNT(*)                                                    AS total_count,
             COUNT(*) FILTER (WHERE e.event_type = 'disaster')          AS disaster_count,
             COUNT(*) FILTER (
@@ -108,7 +109,7 @@ async def _aggregate_events(
         JOIN geography.counties c USING (fips_code)
         WHERE e.fips_code IS NOT NULL
           AND e.event_start >= %(since)s
-        GROUP BY e.fips_code, c.population
+        GROUP BY e.fips_code, c.population, c.median_household_income
         HAVING COUNT(*) > 0
         """,
         {"since": since},
@@ -131,6 +132,7 @@ async def _upsert_features(
         population = row["population"] or 0
         severity_weight_sum = row["severity_weight_sum"] or 0
         total_count = row["total_count"] or 0
+        median_household_income = row["median_household_income"]
 
         # population_exposure: how many people were exposed, weighted by severity
         population_exposure = float(population * severity_weight_sum)
@@ -138,6 +140,15 @@ async def _upsert_features(
         # hazard_frequency_score: weighted events normalized to a 30-day rate
         hazard_frequency_score = (
             round(severity_weight_sum / window_days * 30, 4) if window_days else 0.0
+        )
+
+        # economic_exposure: income (in thousands) scaled by event severity — captures
+        # the dollar-value of economic activity at risk. Counties with higher income AND
+        # more severe events score higher. Uses Census ACS B19013_001E median HH income.
+        economic_exposure = (
+            round(float(median_household_income) / 1000.0 * severity_weight_sum, 4)
+            if median_household_income is not None
+            else 0.0
         )
 
         features = {
@@ -149,6 +160,7 @@ async def _upsert_features(
             if row["max_earthquake_magnitude"] is not None else None,
             "population_exposure": population_exposure,
             "hazard_frequency_score": hazard_frequency_score,
+            "economic_exposure": economic_exposure,
             "total_event_count": total_count,
         }
 
@@ -159,13 +171,13 @@ async def _upsert_features(
                 disaster_count, major_disaster_count, severe_weather_count,
                 earthquake_count, max_earthquake_magnitude,
                 population_exposure, hazard_frequency_score,
-                features
+                economic_exposure, features
             ) VALUES (
                 %(fips_code)s, %(feature_date)s, %(window_days)s,
                 %(disaster_count)s, %(major_disaster_count)s, %(severe_weather_count)s,
                 %(earthquake_count)s, %(max_earthquake_magnitude)s,
                 %(population_exposure)s, %(hazard_frequency_score)s,
-                %(features)s
+                %(economic_exposure)s, %(features)s
             )
             ON CONFLICT (fips_code, feature_date, window_days) DO UPDATE SET
                 disaster_count           = EXCLUDED.disaster_count,
@@ -175,6 +187,7 @@ async def _upsert_features(
                 max_earthquake_magnitude = EXCLUDED.max_earthquake_magnitude,
                 population_exposure      = EXCLUDED.population_exposure,
                 hazard_frequency_score   = EXCLUDED.hazard_frequency_score,
+                economic_exposure        = EXCLUDED.economic_exposure,
                 features                 = EXCLUDED.features,
                 computed_at              = now()
             """,
@@ -189,6 +202,7 @@ async def _upsert_features(
                 "max_earthquake_magnitude": row["max_earthquake_magnitude"],
                 "population_exposure": population_exposure,
                 "hazard_frequency_score": hazard_frequency_score,
+                "economic_exposure": economic_exposure,
                 "features": Jsonb(features),
             },
         )

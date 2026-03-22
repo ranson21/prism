@@ -35,6 +35,7 @@ SELECT
     max_earthquake_magnitude,
     population_exposure,
     hazard_frequency_score,
+    economic_exposure,
     feature_date
 FROM risk.county_features f
 WHERE f.fips_code = $1
@@ -51,6 +52,7 @@ type GetCountyFeaturesRow struct {
 	MaxEarthquakeMagnitude pgtype.Numeric `json:"max_earthquake_magnitude"`
 	PopulationExposure     pgtype.Numeric `json:"population_exposure"`
 	HazardFrequencyScore   pgtype.Numeric `json:"hazard_frequency_score"`
+	EconomicExposure       pgtype.Numeric `json:"economic_exposure"`
 	FeatureDate            pgtype.Date    `json:"feature_date"`
 }
 
@@ -66,6 +68,7 @@ func (q *Queries) GetCountyFeatures(ctx context.Context, fipsCode string) (GetCo
 		&i.MaxEarthquakeMagnitude,
 		&i.PopulationExposure,
 		&i.HazardFrequencyScore,
+		&i.EconomicExposure,
 		&i.FeatureDate,
 	)
 	return i, err

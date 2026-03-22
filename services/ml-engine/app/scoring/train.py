@@ -36,15 +36,17 @@ FEATURE_COLUMNS = [
     "max_earthquake_magnitude",
     "hazard_frequency_score",
     "population_exposure",
+    "economic_exposure",
 ]
 
 # Fallback weights used when training data is insufficient
 COMPOSITE_WEIGHTS = {
-    "severe_weather_count":      0.30,
-    "earthquake_count":          0.15,
-    "max_earthquake_magnitude":  0.20,
-    "hazard_frequency_score":    0.25,
+    "severe_weather_count":      0.27,
+    "earthquake_count":          0.13,
+    "max_earthquake_magnitude":  0.18,
+    "hazard_frequency_score":    0.22,
     "population_exposure":       0.10,
+    "economic_exposure":         0.10,
 }
 
 _MIN_POSITIVE_EXAMPLES = 10
@@ -169,7 +171,8 @@ async def _load_features(conn, window_days: int) -> pd.DataFrame:
             f.earthquake_count,
             COALESCE(f.max_earthquake_magnitude, 0) AS max_earthquake_magnitude,
             f.population_exposure,
-            f.hazard_frequency_score
+            f.hazard_frequency_score,
+            COALESCE(f.economic_exposure, 0) AS economic_exposure
         FROM risk.county_features f
         WHERE f.window_days = %s
           AND f.feature_date = (

@@ -19,7 +19,8 @@ from app.db import close_pool, init_pool, get_conn
 
 log = logging.getLogger(__name__)
 
-_CENSUS_URL = "https://api.census.gov/data/2019/pep/population"
+_CENSUS_PEP_URL = "https://api.census.gov/data/2019/pep/population"
+_CENSUS_ACS_URL = "https://api.census.gov/data/2019/acs/acs5"
 
 STATE_NAMES: dict[str, tuple[str, str]] = {
     "01": ("Alabama", "AL"), "02": ("Alaska", "AK"), "04": ("Arizona", "AZ"),
@@ -43,12 +44,52 @@ STATE_NAMES: dict[str, tuple[str, str]] = {
 }
 
 
+async def _fetch_median_income(client: httpx.AsyncClient) -> dict[str, int | None]:
+    """
+    Fetch median household income (B19013_001E) from the Census ACS 5-year estimates.
+    Returns a dict keyed by 5-digit FIPS code.
+    Null or negative values (Census sentinel −666666666) are stored as None.
+    """
+    try:
+        resp = await client.get(
+            _CENSUS_ACS_URL,
+            params={
+                "get": "B19013_001E",
+                "for": "county:*",
+                "in": "state:*",
+            },
+        )
+        resp.raise_for_status()
+        rows = resp.json()
+    except Exception as exc:
+        log.warning("Could not fetch median income from Census ACS: %s", exc)
+        return {}
+
+    headers = rows[0]
+    income_idx = headers.index("B19013_001E")
+    state_idx = headers.index("state")
+    county_idx = headers.index("county")
+
+    income_by_fips: dict[str, int | None] = {}
+    for row in rows[1:]:
+        state_fips = row[state_idx].zfill(2)
+        county_fips = row[county_idx].zfill(3)
+        fips_code = f"{state_fips}{county_fips}"
+        try:
+            val = int(row[income_idx])
+            income_by_fips[fips_code] = val if val > 0 else None
+        except (TypeError, ValueError):
+            income_by_fips[fips_code] = None
+
+    return income_by_fips
+
+
 async def seed() -> None:
     log.info("Fetching county data from Census Bureau...")
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         resp = await client.get(
-            _CENSUS_URL,
+            _CENSUS_PEP_URL,
             params={
                 "get": "NAME,POP",
                 "for": "county:*",
@@ -57,6 +98,9 @@ async def seed() -> None:
         )
         resp.raise_for_status()
         rows = resp.json()
+
+        log.info("Fetching median household income from Census ACS...")
+        income_by_fips = await _fetch_median_income(client)
 
     # First row is headers: [NAME, POP, state, county]
     headers = rows[0]
@@ -85,21 +129,23 @@ async def seed() -> None:
             state_info[0],
             state_info[1],
             population,
+            income_by_fips.get(fips_code),
         ))
 
-    log.info("Inserting %d counties...", len(counties))
+    log.info("Inserting %d counties (with income data for %d)...", len(counties), sum(1 for c in counties if c[6] is not None))
 
     async with get_conn() as conn:
         async with conn.cursor() as cur:
             await cur.executemany(
                 """
                 INSERT INTO geography.counties
-                    (fips_code, county_name, state_fips, state_name, state_abbr, population)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                    (fips_code, county_name, state_fips, state_name, state_abbr, population, median_household_income)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (fips_code) DO UPDATE SET
-                    county_name = EXCLUDED.county_name,
-                    population  = EXCLUDED.population,
-                    updated_at  = now()
+                    county_name              = EXCLUDED.county_name,
+                    population               = EXCLUDED.population,
+                    median_household_income  = EXCLUDED.median_household_income,
+                    updated_at               = now()
                 """,
                 counties,
             )

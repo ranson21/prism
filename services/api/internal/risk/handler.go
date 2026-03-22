@@ -117,6 +117,7 @@ func (h *Handler) explain(c *gin.Context) {
 			"max_earthquake_magnitude": features.MaxEarthquakeMagnitude,
 			"population_exposure":      features.PopulationExposure,
 			"hazard_frequency_score":   features.HazardFrequencyScore,
+			"economic_exposure":        features.EconomicExposure,
 		},
 	})
 }
