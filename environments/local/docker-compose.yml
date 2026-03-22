@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: prism-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-prism}
+      POSTGRES_USER: ${POSTGRES_USER:-prism}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prism_dev_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-prism} -d ${POSTGRES_DB:-prism}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ml-engine:
+    build:
+      context: ../../services/ml-engine
+      dockerfile: Dockerfile
+    container_name: prism-ml-engine
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-prism}:${POSTGRES_PASSWORD:-prism_dev_secret}@postgres:5432/${POSTGRES_DB:-prism}
+      FEMA_API_KEY: ${FEMA_API_KEY:-}
+      NOAA_API_KEY: ${NOAA_API_KEY:-}
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ml_artifacts:/app/artifacts
+
+  api:
+    build:
+      context: ../../services/api
+      dockerfile: Dockerfile
+    container_name: prism-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-prism}:${POSTGRES_PASSWORD:-prism_dev_secret}@postgres:5432/${POSTGRES_DB:-prism}
+      ML_ENGINE_URL: http://ml-engine:8001
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  ml_artifacts:

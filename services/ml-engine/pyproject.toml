@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "prism-ml-engine"
+version = "0.1.0"
+description = "PRISM ML engine: ingestion, feature engineering, risk scoring"
+authors = []
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.111.0"
+uvicorn = { extras = ["standard"], version = "^0.29.0" }
+httpx = "^0.27.0"           # async HTTP for connectors
+psycopg = { extras = ["binary", "pool"], version = "^3.1.0" }
+pydantic = "^2.7.0"
+pydantic-settings = "^2.2.0"
+scikit-learn = "^1.4.0"
+pandas = "^2.2.0"
+numpy = "^1.26.0"
+joblib = "^1.4.0"           # model serialization
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-asyncio = "^0.23.0"
+ruff = "^0.4.0"
+httpx = "^0.27.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
