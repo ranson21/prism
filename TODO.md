@@ -36,7 +36,7 @@
 - [x] Copy the PRISM logo from the root into its appropriate folder and remove from root
 
 ## Prompt Compliance Gaps
-- [ ] **Economic impact proxy** — document `major_disaster_count` as economic proxy in InfoPanel (FEMA major declarations require $$ damage thresholds); add it to the feature list in ExplainPanel raw counts
+- [x] **Economic impact proxy** — Census ACS `B19013_001E` median household income fetched in seed_counties → stored in `geography.counties.median_household_income` → `economic_exposure = (income_thousands) × severity_weight_sum` in compute.py → column in `risk.county_features` → feature in train.py + score.py → surfaced in ExplainPanel + InfoPanel
 - [ ] **Historical vs predicted comparison** — add a History tab or panel to the dashboard showing past model score runs per county so decision-makers can compare trend over time vs current prediction
 
 ## Polish / Demo Prep
