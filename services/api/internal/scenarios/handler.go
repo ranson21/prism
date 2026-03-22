@@ -36,7 +36,8 @@ type SimulateRequest struct {
 	Name              string   `json:"name" binding:"required"`
 	Description       string   `json:"description"`
 	SeverityMultipler float64  `json:"severity_multiplier" binding:"required,min=0.1,max=5.0"`
-	FIPSCodes         []string `json:"fips_codes"` // empty = all counties
+	FIPSCodes         []string `json:"fips_codes"`   // empty = all counties
+	ResourceUnits     int      `json:"resource_units"` // 0 = no allocation modeling
 }
 
 func (h *Handler) simulate(c *gin.Context) {
@@ -72,13 +73,15 @@ func (h *Handler) simulate(c *gin.Context) {
 	}
 
 	type simResult struct {
-		FIPSCode           string  `json:"fips_code"`
-		CountyName         string  `json:"county_name"`
-		StateAbbr          string  `json:"state_abbr"`
-		BaselineScore      float64 `json:"baseline_score"`
-		SimulatedRiskScore float64 `json:"simulated_risk_score"`
-		SimulatedRiskLevel string  `json:"simulated_risk_level"`
-		DeltaFromBaseline  float64 `json:"delta_from_baseline"`
+		FIPSCode            string  `json:"fips_code"`
+		CountyName          string  `json:"county_name"`
+		StateAbbr           string  `json:"state_abbr"`
+		BaselineScore       float64 `json:"baseline_score"`
+		SimulatedRiskScore  float64 `json:"simulated_risk_score"`
+		SimulatedRiskLevel  string  `json:"simulated_risk_level"`
+		DeltaFromBaseline   float64 `json:"delta_from_baseline"`
+		AllocatedResources  int     `json:"allocated_resources"`
+		UnmetNeed           bool    `json:"unmet_need"`
 	}
 
 	var results []simResult
@@ -114,11 +117,47 @@ func (h *Handler) simulate(c *gin.Context) {
 		})
 	}
 
+	// Greedy resource pre-positioning: allocate to highest-delta counties first.
+	// Counties with delta > 0 that don't receive a unit are flagged as unmet need.
+	totalAllocated := 0
+	totalUnmet := 0
+	if req.ResourceUnits > 0 {
+		type idxDelta struct {
+			idx   int
+			delta float64
+		}
+		ranked := make([]idxDelta, len(results))
+		for i, r := range results {
+			ranked[i] = idxDelta{i, r.DeltaFromBaseline}
+		}
+		for i := 1; i < len(ranked); i++ {
+			for j := i; j > 0 && ranked[j].delta > ranked[j-1].delta; j-- {
+				ranked[j], ranked[j-1] = ranked[j-1], ranked[j]
+			}
+		}
+		remaining := min(req.ResourceUnits, 500)
+		for _, rd := range ranked {
+			if results[rd.idx].DeltaFromBaseline > 0 {
+				if remaining > 0 {
+					results[rd.idx].AllocatedResources = 1
+					remaining--
+					totalAllocated++
+				} else {
+					results[rd.idx].UnmetNeed = true
+					totalUnmet++
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"scenario_id": scenario.ID,
-		"name":        scenario.Name,
-		"results":     results,
-		"total":       len(results),
+		"scenario_id":     scenario.ID,
+		"name":            scenario.Name,
+		"results":         results,
+		"total":           len(results),
+		"resource_units":  req.ResourceUnits,
+		"total_allocated": totalAllocated,
+		"total_unmet":     totalUnmet,
 	})
 }
 

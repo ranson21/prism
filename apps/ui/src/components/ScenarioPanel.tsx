@@ -24,6 +24,7 @@ export function ScenarioPanel({ onResults, onReset, selectedCounties, onToggleCo
   const [simulate, { isLoading, data, reset }] = useSimulateMutation()
   const [multiplier, setMultiplier] = useState(2.0)
   const [scenarioName, setScenarioName] = useState('Custom Scenario')
+  const [resourceUnits, setResourceUnits] = useState(50)
   const [showInfo, setShowInfo] = useState(false)
 
   function applyPreset(preset: typeof PRESETS[number]) {
@@ -35,6 +36,7 @@ export function ScenarioPanel({ onResults, onReset, selectedCounties, onToggleCo
     const body = {
       name: scenarioName,
       severity_multiplier: multiplier,
+      resource_units: resourceUnits,
       ...(selectedCounties.length > 0 && { fips_codes: selectedCounties.map((c) => c.fips_code) }),
     }
     const result = await simulate(body)
@@ -124,6 +126,25 @@ export function ScenarioPanel({ onResults, onReset, selectedCounties, onToggleCo
               <span>5.0× (catastrophic)</span>
             </div>
           </div>
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">
+              Resource Units — <span className="text-slate-200 font-mono">{resourceUnits}</span>
+              <span className="ml-1 text-slate-600 text-[10px]">(teams pre-positioned)</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={500}
+              step={5}
+              value={resourceUnits}
+              onChange={(e) => setResourceUnits(parseInt(e.target.value))}
+              className="w-full accent-emerald-500"
+            />
+            <div className="flex justify-between text-[10px] text-slate-500 mt-0.5">
+              <span>0 (none)</span>
+              <span>500 (max)</span>
+            </div>
+          </div>
         </div>
 
         {/* County selection */}
@@ -173,12 +194,24 @@ export function ScenarioPanel({ onResults, onReset, selectedCounties, onToggleCo
       {/* Results */}
       {data && (
         <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
-          <div className="px-4 py-3 border-b border-white/10 shrink-0">
+          <div className="px-4 py-3 border-b border-white/10 shrink-0 space-y-2">
             <p className="text-xs text-slate-400 uppercase tracking-wider">{data.name} — {data.total} counties</p>
+            {data.resource_units > 0 && (
+              <div className="flex gap-3 text-[11px]">
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+                  {data.total_allocated} allocated
+                </span>
+                <span className="flex items-center gap-1 text-amber-400">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                  {data.total_unmet} unmet need
+                </span>
+              </div>
+            )}
           </div>
           <div className="divide-y divide-white/5">
             {data.results.slice(0, 50).map((r) => (
-              <ResultRow key={r.fips_code} result={r} />
+              <ResultRow key={r.fips_code} result={r} showAllocation={data.resource_units > 0} />
             ))}
           </div>
         </div>
@@ -188,7 +221,7 @@ export function ScenarioPanel({ onResults, onReset, selectedCounties, onToggleCo
   )
 }
 
-function ResultRow({ result: r }: { result: SimResult }) {
+function ResultRow({ result: r, showAllocation }: { result: SimResult; showAllocation: boolean }) {
   const deltaColor = r.delta_from_baseline > 5
     ? '#ef4444'
     : r.delta_from_baseline > 0
@@ -196,9 +229,21 @@ function ResultRow({ result: r }: { result: SimResult }) {
     : '#22c55e'
 
   return (
-    <div className="px-4 py-2.5 flex items-center gap-3">
+    <div className={`px-4 py-2.5 flex items-center gap-3 ${r.allocated_resources > 0 ? 'bg-emerald-950/30' : ''}`}>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-slate-200 truncate">{r.county_name}, {r.state_abbr}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-medium text-slate-200 truncate">{r.county_name}, {r.state_abbr}</p>
+          {showAllocation && r.allocated_resources > 0 && (
+            <span className="shrink-0 text-[9px] font-medium bg-emerald-900/60 text-emerald-300 border border-emerald-700/40 rounded px-1.5 py-0.5">
+              DEPLOYED
+            </span>
+          )}
+          {showAllocation && r.unmet_need && (
+            <span className="shrink-0 text-[9px] font-medium bg-amber-900/60 text-amber-300 border border-amber-700/40 rounded px-1.5 py-0.5">
+              UNMET
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-[10px] text-slate-500">
             Baseline <span className="font-mono text-slate-400">{r.baseline_score.toFixed(1)}</span>

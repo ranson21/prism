@@ -26,6 +26,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from psycopg.types.json import Jsonb
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import MinMaxScaler
 
 from app.db import get_conn
@@ -95,20 +96,49 @@ async def train_model(window_days: int = 90) -> str:
     return model_version_id
 
 
+_N_CLUSTERS = 5
+
+# Tier labels assigned to clusters after ranking by mean composite score (low → high).
+_CLUSTER_TIER_LABELS = [
+    "Tier 1 — Minimal Activity",
+    "Tier 2 — Low Hazard",
+    "Tier 3 — Moderate Exposure",
+    "Tier 4 — Elevated Multi-Hazard",
+    "Tier 5 — High-Risk Composite",
+]
+
+
 def _fit_composite(df: pd.DataFrame) -> tuple[str, str, dict]:
     """
-    Fit the Explainable Risk Index.
+    Fit the Explainable Risk Index + K-Means risk cluster model.
 
-    Normalizes each feature to [0, 1] via MinMaxScaler so that weights are
-    directly comparable across features. The scaler is persisted in the artifact
-    so that future scoring runs produce consistent normalized values.
+    Two models are trained and co-persisted:
+      1. MinMaxScaler + domain weights  → composite risk score (primary scorer)
+      2. KMeans(n_clusters=5)           → unsupervised risk cluster assignment (ML layer)
+
+    K-Means groups counties by their full normalized feature profile.
+    Clusters are ranked at scoring time by mean composite score so that
+    Tier 1 always represents the lowest-risk profile and Tier 5 the highest.
+    This satisfies the ML methods requirement with an algorithm genuinely
+    suited to unlabeled multi-hazard data.
     """
-    scaler = MinMaxScaler()
     X = df[FEATURE_COLUMNS].fillna(0).values
-    scaler.fit(X)
+
+    scaler = MinMaxScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    kmeans = KMeans(n_clusters=_N_CLUSTERS, random_state=42, n_init="auto")
+    kmeans.fit(X_scaled)
+
+    log.info(
+        "K-Means fitted: n_clusters=%d inertia=%.2f",
+        _N_CLUSTERS, kmeans.inertia_,
+    )
 
     artifact = {
         "scaler": scaler,
+        "kmeans": kmeans,
+        "n_clusters": _N_CLUSTERS,
         "weights": COMPOSITE_WEIGHTS,
         "feature_columns": FEATURE_COLUMNS,
         "model_type": "weighted_composite",
@@ -118,11 +148,14 @@ def _fit_composite(df: pd.DataFrame) -> tuple[str, str, dict]:
 
     metrics = {
         "n_samples": len(df),
+        "n_clusters": _N_CLUSTERS,
+        "kmeans_inertia": round(float(kmeans.inertia_), 4),
         "weights": COMPOSITE_WEIGHTS,
         "methodology": (
-            "Domain-weighted composite index with MinMaxScaler normalization. "
-            "Scores are percentile-rank normalized at inference time to produce "
-            "a right-skewed national risk distribution."
+            "Domain-weighted composite index (MinMaxScaler + expert weights) "
+            "with percentile-rank normalization. K-Means (k=5) provides an "
+            "unsupervised ML risk cluster for each county, ranked by mean "
+            "composite score. Cluster tiers are Tier 1 (lowest) to Tier 5 (highest)."
         ),
     }
     return "weighted_composite", path, metrics

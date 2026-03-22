@@ -9,7 +9,7 @@ const PILLARS = [
   {
     icon: '📊',
     label: 'Uncertainty Shown',
-    detail: 'Every score includes a confidence band derived from model variance across decision trees.',
+    detail: 'Every score includes a confidence band derived from the relative variance of the weighted feature vector — counties where features pull in different directions have wider bands.',
   },
   {
     icon: '🔍',

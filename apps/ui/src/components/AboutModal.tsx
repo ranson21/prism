@@ -11,7 +11,7 @@ const WORKFLOW_STEPS = [
   {
     step: '02',
     title: 'Score Every County',
-    body: 'A random forest model produces a 0–100 risk score for all 3,000+ US counties, with top risk drivers and a confidence band per score.',
+    body: 'A domain-weighted composite index (FEMA NRI methodology) and unsupervised K-Means clustering produce a 0–100 risk score for all 3,200+ US counties, with top risk drivers, a confidence band, and a risk tier per score.',
   },
   {
     step: '03',
@@ -93,6 +93,41 @@ export function AboutModal({ onClose }: Props) {
                   <p className="mt-1 text-xs text-slate-400 leading-relaxed">{body}</p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Methodology */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-4">Our Approach to Scoring</p>
+            <div className="rounded-xl bg-[#1F2937] border border-white/5 p-5 space-y-5">
+
+              <div>
+                <p className="text-sm font-semibold text-slate-100 mb-1">Why not a traditional AI model?</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  The most common approach for predicting disaster risk is to train a model on historical outcomes — teach it which counties have been hit before, and let it predict who's next. That works well when you have frequent, timely data. But major federal disaster declarations take months to process, and in any given 90-day window, fewer than 1% of counties receive one. A model trained on data that sparse would learn almost nothing useful.
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-slate-100 mb-1">What PRISM does instead</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  PRISM scores counties the same way the FEMA National Risk Index does: it weighs the signals we can measure right now — severe weather alerts, earthquake activity, population size, income levels — and combines them into a single 0–100 risk score. Each factor has a calibrated weight so that the things that matter most (like severe weather frequency) have the most influence. Scores are then spread across a realistic distribution so the highest-risk counties stand out clearly rather than clustering together at the middle.
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-slate-100 mb-1">Where machine learning comes in</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  On top of the risk score, PRISM uses a clustering algorithm (K-Means) to group all 3,200+ counties into five natural risk tiers — from Tier 1 (Minimal Activity) to Tier 5 (High-Risk Composite). Think of it like sorting counties into peer groups based on their full hazard profile, not just their score. This lets analysts ask "which counties look like this one?" and is useful for benchmarking, resource planning, and spotting counties that score similarly but for very different reasons.
+                </p>
+              </div>
+
+              <div className="border-t border-white/5 pt-4">
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  This approach prioritizes <span className="text-slate-300">transparency and auditability</span> over black-box accuracy. Every score is traceable to named, interpretable inputs — the same standard emergency management professionals use when making life-safety decisions.
+                </p>
+              </div>
+
             </div>
           </div>
 
