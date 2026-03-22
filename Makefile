@@ -1,10 +1,18 @@
-.PHONY: bootstrap dev dev-api dev-ml dev-web test test-api test-ml test-web fmt lint clean \
+.PHONY: bootstrap bootstrap-ml bootstrap-api bootstrap-web \
+        dev dev-api dev-ml dev-web \
+        test test-api test-ml test-web fmt lint clean \
         db-up db-down db-reset ingest
 
-bootstrap:
+bootstrap: bootstrap-ml bootstrap-api bootstrap-web
+
+bootstrap-ml:
 	cd services/ml-engine && poetry install
-	cd services/api && go mod tidy
-	cd frontend && npm install
+
+bootstrap-api:
+	@[ -d services/api ] && cd services/api && go mod tidy || echo "services/api not yet scaffolded, skipping"
+
+bootstrap-web:
+	@[ -d frontend ] && cd frontend && npm install || echo "frontend not yet scaffolded, skipping"
 
 dev:
 	@echo "Run services in separate terminals or wire up a process manager target"
@@ -12,8 +20,8 @@ dev:
 dev-api:
 	cd services/api && go run ./cmd/main.go
 
-dev-ml:
-	cd services/ml-engine && poetry run uvicorn app.main:app --reload
+dev-ml: bootstrap-ml
+	cd services/ml-engine && poetry run uvicorn app.main:app --reload --port 8001
 
 dev-web:
 	cd frontend && npm run dev
@@ -26,7 +34,7 @@ test:
 test-api:
 	cd services/api && go test ./...
 
-test-ml:
+test-ml: bootstrap-ml
 	cd services/ml-engine && poetry run pytest
 
 test-web:

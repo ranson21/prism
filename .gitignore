@@ -1,0 +1,32 @@
+# Environment / secrets
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Go
+services/api/bin/
+*.exe
+
+# Node
+node_modules/
+dist/
+.next/
+
+# ML artifacts
+services/ml-engine/artifacts/
+*.pkl
+*.joblib
+
+# Docker
+environments/local/postgres_data/
+
+# OS
+.DS_Store
