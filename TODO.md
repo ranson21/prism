@@ -19,12 +19,13 @@
 - [x] `POST /score` endpoint to trigger feature + score run
 
 ## Go API
-- [ ] Project scaffold (Gin, go.mod, cmd/main.go)
-- [ ] DB connection (pgx pool)
-- [ ] `GET /risk/summary` — top-level stats
-- [ ] `GET /risk/rankings` — ranked county list with risk_level + top_drivers
-- [ ] `GET /risk/explain/:fips` — full explainability breakdown for one county
-- [ ] `POST /scenarios/simulate` — apply parameter overrides and return delta scores
+- [x] Project scaffold (Gin, go.mod, cmd/main.go)
+- [x] DB connection (pgx pool)
+- [x] sqlc query generation (risk + scenarios domains)
+- [x] `GET /risk/summary` — top-level stats
+- [x] `GET /risk/rankings` — ranked county list with risk_level + top_drivers
+- [x] `GET /risk/explain/:fips` — full explainability breakdown for one county
+- [x] `POST /scenarios/simulate` — apply parameter overrides and return delta scores
 
 ## React Frontend
 - [ ] Project scaffold (Vite + Tailwind + ShadCN)
@@ -32,6 +33,7 @@
 - [ ] Ranked table (sortable, color-coded by risk_level)
 - [ ] Explainability panel (top_drivers for selected county)
 - [ ] Scenario comparison view (baseline vs simulated)
+- [ ] Copy the PRISM logo from the root into its appropriate folder and remove from root
 
 ## Polish / Demo Prep
 - [ ] Seed realistic scenario definitions for demo

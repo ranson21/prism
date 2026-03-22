@@ -9,7 +9,7 @@ bootstrap-ml:
 	cd services/ml-engine && poetry install
 
 bootstrap-api:
-	@[ -d services/api ] && cd services/api && go mod tidy || echo "services/api not yet scaffolded, skipping"
+	cd services/api && go mod tidy
 
 bootstrap-web:
 	@[ -d frontend ] && cd frontend && npm install || echo "frontend not yet scaffolded, skipping"
@@ -18,7 +18,7 @@ dev:
 	@echo "Run services in separate terminals or wire up a process manager target"
 
 dev-api:
-	cd services/api && go run ./cmd/main.go
+	cd services/api && air
 
 dev-ml: bootstrap-ml
 # 	cp -n services/ml-engine/.env.example services/ml-engine/.env 2>/dev/null || true
