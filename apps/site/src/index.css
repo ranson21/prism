@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-prism-bg: #0F172A;
+  --color-prism-panel: #111827;
+  --color-prism-card: #1F2937;
+  --color-risk-low: #22c55e;
+  --color-risk-moderate: #eab308;
+  --color-risk-elevated: #f97316;
+  --color-risk-critical: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0F172A;
+  color: #f1f5f9;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

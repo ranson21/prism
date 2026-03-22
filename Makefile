@@ -14,6 +14,9 @@ bootstrap-api:
 bootstrap-web:
 	cd apps/ui && npm install --legacy-peer-deps
 
+bootstrap-site:
+	cd apps/site && npm install --legacy-peer-deps
+
 dev:
 	@echo "Run services in separate terminals or wire up a process manager target"
 
@@ -25,6 +28,9 @@ dev-ml: bootstrap-ml
 
 dev-web: bootstrap-web
 	cd apps/ui && npm run dev
+
+dev-site: bootstrap-site
+	cd apps/site && npm run dev
 
 test:
 	$(MAKE) test-api
