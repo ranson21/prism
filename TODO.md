@@ -45,12 +45,12 @@
 ## Working Prototype Checklist
 _Ensures the demo is end-to-end functional and compelling._
 
-- [ ] Seed realistic scenario definitions for demo
-- [ ] End-to-end smoke test (ingest → score → API → UI)
-- [ ] Verify map heatmap renders with live scored data
-- [ ] Verify explainability panel loads correctly for top-ranked counties
-- [ ] Verify scenario simulation shows meaningful delta scores
-- [ ] Confirm confidence bands display on explain view
+- [x] Seed realistic scenario definitions for demo
+- [x] End-to-end smoke test (ingest → score → API → UI)
+- [x] Verify map heatmap renders with live scored data
+- [x] Verify explainability panel loads correctly for top-ranked counties
+- [x] Verify scenario simulation shows meaningful delta scores
+- [x] Confirm confidence bands display on explain view
 
 ---
 
