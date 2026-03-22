@@ -28,12 +28,12 @@
 - [x] `POST /scenarios/simulate` — apply parameter overrides and return delta scores
 
 ## React Frontend
-- [ ] Project scaffold (Vite + Tailwind + ShadCN)
-- [ ] Map heatmap (county-level risk choropleth)
-- [ ] Ranked table (sortable, color-coded by risk_level)
-- [ ] Explainability panel (top_drivers for selected county)
-- [ ] Scenario comparison view (baseline vs simulated)
-- [ ] Copy the PRISM logo from the root into its appropriate folder and remove from root
+- [x] Project scaffold (Vite + Tailwind + RTK Query) — apps/ui
+- [x] Map heatmap (county-level risk choropleth)
+- [x] Ranked table (color-coded by risk_level)
+- [x] Explainability panel (top_drivers bar chart + feature counts)
+- [x] Scenario comparison view (baseline vs simulated)
+- [x] Copy the PRISM logo from the root into its appropriate folder and remove from root
 
 ## Polish / Demo Prep
 - [ ] Seed realistic scenario definitions for demo

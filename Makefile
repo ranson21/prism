@@ -12,7 +12,7 @@ bootstrap-api:
 	cd services/api && go mod tidy
 
 bootstrap-web:
-	@[ -d frontend ] && cd frontend && npm install || echo "frontend not yet scaffolded, skipping"
+	cd apps/ui && npm install --legacy-peer-deps
 
 dev:
 	@echo "Run services in separate terminals or wire up a process manager target"
@@ -21,11 +21,10 @@ dev-api:
 	cd services/api && air
 
 dev-ml: bootstrap-ml
-# 	cp -n services/ml-engine/.env.example services/ml-engine/.env 2>/dev/null || true
 	cd services/ml-engine && poetry run uvicorn app.main:app --reload --port 8001
 
-dev-web:
-	cd frontend && npm run dev
+dev-web: bootstrap-web
+	cd apps/ui && npm run dev
 
 test:
 	$(MAKE) test-api
@@ -39,17 +38,17 @@ test-ml: bootstrap-ml
 	cd services/ml-engine && poetry run pytest
 
 test-web:
-	cd frontend && npm test
+	cd apps/ui && npm test
 
 fmt:
 	cd services/api && gofmt -w $$(find . -name '*.go')
 	cd services/ml-engine && poetry run ruff format .
-	cd frontend && npm run format
+	cd apps/ui && npm run format
 
 lint:
 	cd services/api && golangci-lint run ./...
 	cd services/ml-engine && poetry run ruff check .
-	cd frontend && npm run lint
+	cd apps/ui && npm run lint
 
 db-up:
 # 	cp -n environments/local/.env.example environments/local/.env 2>/dev/null || true
