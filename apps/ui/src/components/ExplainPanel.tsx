@@ -46,19 +46,27 @@ export function ExplainPanel({ fips }: Props) {
       </div>
 
       {/* Score row */}
-      <div className="px-4 py-4 border-b border-white/10 flex items-center gap-6 shrink-0">
-        <div>
-          <p className="text-xs text-slate-400 mb-1">Risk Score</p>
-          <p className="text-4xl font-bold tabular-nums" style={{ color: riskColor(data.risk_level) }}>
-            {data.risk_score.toFixed(1)}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">out of 100</p>
+      <div className="px-4 py-4 border-b border-white/10 shrink-0 space-y-3">
+        <div className="flex items-center gap-6">
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Risk Score</p>
+            <p className="text-4xl font-bold tabular-nums" style={{ color: riskColor(data.risk_level) }}>
+              {data.risk_score.toFixed(1)}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">out of 100</p>
+          </div>
+          <div className="text-sm text-slate-400 space-y-1">
+            <p>Population: <span className="text-slate-200">{data.population?.toLocaleString() ?? 'N/A'}</span></p>
+            <p>Score date: <span className="text-slate-200">{formatDate(data.score_date)}</span></p>
+            <p>FIPS: <span className="text-slate-200 font-mono">{data.fips_code}</span></p>
+          </div>
         </div>
-        <div className="text-sm text-slate-400 space-y-1">
-          <p>Population: <span className="text-slate-200">{data.population?.toLocaleString() ?? 'N/A'}</span></p>
-          <p>Score date: <span className="text-slate-200">{formatDate(data.score_date)}</span></p>
-          <p>FIPS: <span className="text-slate-200 font-mono">{data.fips_code}</span></p>
-        </div>
+        <ConfidenceBar
+          score={data.risk_score}
+          lower={data.confidence_lower}
+          upper={data.confidence_upper}
+          color={riskColor(data.risk_level)}
+        />
       </div>
 
       {/* Tab content */}
@@ -108,6 +116,50 @@ export function ExplainPanel({ fips }: Props) {
         )}
       </div>
     </PanelShell>
+  )
+}
+
+function ConfidenceBar({ score, lower, upper, color }: {
+  score: number
+  lower: number
+  upper: number
+  color: string
+}) {
+  const lo = Math.max(0, lower)
+  const hi = Math.min(100, upper)
+  const bandLeft = `${lo}%`
+  const bandWidth = `${Math.max(0, hi - lo)}%`
+  const scoreLeft = `${Math.min(100, Math.max(0, score))}%`
+
+  return (
+    <div>
+      <div className="flex justify-between text-xs text-slate-500 mb-1">
+        <span className="group relative inline-flex items-center gap-1 cursor-default">
+          Confidence band
+          <span className="text-slate-600 text-[10px] leading-none">ⓘ</span>
+          <span className="pointer-events-none absolute bottom-full left-0 mb-2 w-56 rounded-lg bg-[#0F172A] border border-white/10 px-3 py-2 text-xs text-slate-300 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10 shadow-xl">
+            Range of risk scores across all decision trees in the model. A narrow band means the trees agree; a wide band signals higher uncertainty.
+          </span>
+        </span>
+        <span className="tabular-nums">{lo.toFixed(1)} – {hi.toFixed(1)}</span>
+      </div>
+      <div className="relative h-3 rounded-full bg-[#1F2937] overflow-hidden">
+        {/* Confidence band */}
+        <div
+          className="absolute top-0 h-full rounded-full"
+          style={{ left: bandLeft, width: bandWidth, background: color, opacity: 0.2 }}
+        />
+        {/* Score tick */}
+        <div
+          className="absolute top-0 h-full w-0.5 rounded-full -translate-x-1/2"
+          style={{ left: scoreLeft, background: color }}
+        />
+      </div>
+      <div className="flex justify-between text-xs text-slate-600 mt-0.5">
+        <span>0</span>
+        <span>100</span>
+      </div>
+    </div>
   )
 }
 

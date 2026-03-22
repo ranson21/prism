@@ -82,13 +82,19 @@ async def score_counties(
         clf = artifact["clf"]
         probas = clf.predict_proba(X_scaled)[:, 1]   # P(major disaster)
         importances = clf.feature_importances_
+        # Per-tree variance → natural uncertainty estimate
+        tree_preds = np.array([t.predict_proba(X_scaled)[:, 1] for t in clf.estimators_])
+        score_std = tree_preds.std(axis=0)
     else:
         # Weighted composite
         weights = np.array([artifact["weights"][f] for f in FEATURE_COLUMNS])
         probas = (X_scaled * weights).sum(axis=1)
         importances = weights / weights.sum()
+        score_std = np.full(len(probas), 0.05)  # fixed ±5% band for composite
 
     scores = np.clip(probas * 100, 0, 100)
+    conf_lower = np.clip((probas - score_std) * 100, 0, 100)
+    conf_upper = np.clip((probas + score_std) * 100, 0, 100)
 
     today = date.today()
     rows_written = 0
@@ -104,13 +110,16 @@ async def score_counties(
                 """
                 INSERT INTO risk.scores
                     (fips_code, model_version_id, score_date,
-                     risk_score, risk_level, top_drivers)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                     risk_score, risk_level, top_drivers,
+                     confidence_lower, confidence_upper)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (fips_code, model_version_id, score_date) DO UPDATE SET
-                    risk_score  = EXCLUDED.risk_score,
-                    risk_level  = EXCLUDED.risk_level,
-                    top_drivers = EXCLUDED.top_drivers,
-                    computed_at = now()
+                    risk_score       = EXCLUDED.risk_score,
+                    risk_level       = EXCLUDED.risk_level,
+                    top_drivers      = EXCLUDED.top_drivers,
+                    confidence_lower = EXCLUDED.confidence_lower,
+                    confidence_upper = EXCLUDED.confidence_upper,
+                    computed_at      = now()
                 """,
                 (
                     county_row["fips_code"],
@@ -119,6 +128,8 @@ async def score_counties(
                     risk_score,
                     level,
                     Jsonb(drivers),
+                    round(float(conf_lower[i]), 2),
+                    round(float(conf_upper[i]), 2),
                 ),
             )
             rows_written += 1
