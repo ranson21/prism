@@ -42,8 +42,9 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	risk.NewHandler(q).RegisterRoutes(r.Group("/risk"))
-	scenarios.NewHandler(q).RegisterRoutes(r.Group("/scenarios"))
+	api := r.Group("/api")
+	risk.NewHandler(q).RegisterRoutes(api.Group("/risk"))
+	scenarios.NewHandler(q).RegisterRoutes(api.Group("/scenarios"))
 
 	port := os.Getenv("PORT")
 	if port == "" {
