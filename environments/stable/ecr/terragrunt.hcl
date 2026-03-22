@@ -8,23 +8,48 @@ locals {
 }
 
 terraform {
-  source = "tfr:///terraform-aws-modules/ecr/aws?version=2.3.0"
+  source = "."
 }
 
-inputs = {
-  repository_name = "prism-${local.env.env}-api"
-  repository_type = "private"
-  repository_lifecycle_policy = jsonencode({
-    rules = [{
-      rulePriority = 1
-      description  = "Keep last ${local.env.env == "dev" ? 5 : 10} images"
-      selection = {
-        tagStatus   = "any"
-        countType   = "imageCountMoreThan"
-        countNumber = local.env.env == "dev" ? 5 : 10
+generate "main" {
+  path      = "main.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<-TFEOF
+    locals {
+      keep_count = ${local.env.env == "dev" ? 5 : 10}
+      repos = ["api", "ml-engine", "ui", "site"]
+    }
+
+    resource "aws_ecr_repository" "this" {
+      for_each             = toset(local.repos)
+      name                 = "prism-${local.env.env}-$${each.key}"
+      image_tag_mutability = "MUTABLE"
+
+      image_scanning_configuration {
+        scan_on_push = true
       }
-      action = { type = "expire" }
-    }]
-  })
-  repository_image_scan_on_push = true
+    }
+
+    resource "aws_ecr_lifecycle_policy" "this" {
+      for_each   = aws_ecr_repository.this
+      repository = each.value.name
+
+      policy = jsonencode({
+        rules = [{
+          rulePriority = 1
+          description  = "Keep last $${local.keep_count} images"
+          selection = {
+            tagStatus   = "any"
+            countType   = "imageCountMoreThan"
+            countNumber = local.keep_count
+          }
+          action = { type = "expire" }
+        }]
+      })
+    }
+
+    output "repository_urls" {
+      value = { for k, v in aws_ecr_repository.this : k => v.repository_url }
+    }
+  TFEOF
 }

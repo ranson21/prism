@@ -20,8 +20,9 @@ dependency "alb" {
   config_path = "../alb"
   mock_outputs = {
     target_group_arns = [
-      "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/prism-test-ui/aaa",
+      "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/prism-test-site/aaa",
       "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/prism-test-api/bbb",
+      "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/prism-test-ui/ccc",
     ]
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
@@ -149,9 +150,33 @@ inputs = {
       subnet_ids = dependency.vpc.outputs.private_subnets
       load_balancer = {
         service = {
-          target_group_arn = dependency.alb.outputs.target_group_arns[0]
+          target_group_arn = dependency.alb.outputs.target_group_arns[2] # ui
           container_name   = "ui"
           container_port   = 3000
+        }
+      }
+    }
+
+    # ── Landing Site ──────────────────────────────────────────────────────────
+    site = {
+      cpu    = local.env.ui_cpu
+      memory = local.env.ui_memory
+
+      container_definitions = {
+        site = {
+          image     = "119004746646.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-site:latest"
+          essential = true
+          port_mappings = [{ containerPort = 80, protocol = "tcp" }]
+        }
+      }
+
+      subnet_ids         = dependency.vpc.outputs.private_subnets
+      security_group_ids = [dependency.sg.outputs.ecs_sg_id]
+      load_balancer = {
+        service = {
+          target_group_arn = dependency.alb.outputs.target_group_arns[0] # site
+          container_name   = "site"
+          container_port   = 80
         }
       }
     }

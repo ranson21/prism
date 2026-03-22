@@ -16,47 +16,122 @@ dependency "alb" {
 }
 
 terraform {
-  source = "tfr:///umotif-public/waf-webaclv2/aws?version=3.9.0"
+  source = "."
+}
+
+generate "main" {
+  path      = "main.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<-TFEOF
+    variable "alb_arn" { type = string }
+
+    resource "aws_wafv2_web_acl" "this" {
+      name  = "prism-${local.env.env}-waf"
+      scope = "REGIONAL"
+
+      default_action {
+        allow {
+        }
+      }
+
+      rule {
+        name     = "AWSManagedRulesCommonRuleSet"
+        priority = 10
+        override_action {
+          none {
+          }
+        }
+        statement {
+          managed_rule_group_statement {
+            name        = "AWSManagedRulesCommonRuleSet"
+            vendor_name = "AWS"
+          }
+        }
+        visibility_config {
+          cloudwatch_metrics_enabled = true
+          metric_name                = "CommonRuleSet"
+          sampled_requests_enabled   = true
+        }
+      }
+
+      rule {
+        name     = "AWSManagedRulesKnownBadInputsRuleSet"
+        priority = 20
+        override_action {
+          none {
+          }
+        }
+        statement {
+          managed_rule_group_statement {
+            name        = "AWSManagedRulesKnownBadInputsRuleSet"
+            vendor_name = "AWS"
+          }
+        }
+        visibility_config {
+          cloudwatch_metrics_enabled = true
+          metric_name                = "KnownBadInputs"
+          sampled_requests_enabled   = true
+        }
+      }
+
+      rule {
+        name     = "AWSManagedRulesAmazonIpReputationList"
+        priority = 30
+        override_action {
+          none {
+          }
+        }
+        statement {
+          managed_rule_group_statement {
+            name        = "AWSManagedRulesAmazonIpReputationList"
+            vendor_name = "AWS"
+          }
+        }
+        visibility_config {
+          cloudwatch_metrics_enabled = true
+          metric_name                = "IpReputationList"
+          sampled_requests_enabled   = true
+        }
+      }
+
+      rule {
+        name     = "RateLimitPerIP"
+        priority = 40
+        action {
+          block {
+          }
+        }
+        statement {
+          rate_based_statement {
+            limit              = ${local.env.waf_rate_limit}
+            aggregate_key_type = "IP"
+          }
+        }
+        visibility_config {
+          cloudwatch_metrics_enabled = true
+          metric_name                = "RateLimitPerIP"
+          sampled_requests_enabled   = true
+        }
+      }
+
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "prism-${local.env.env}-waf"
+        sampled_requests_enabled   = true
+      }
+    }
+
+    resource "aws_wafv2_web_acl_association" "this" {
+      resource_arn = var.alb_arn
+      web_acl_arn  = aws_wafv2_web_acl.this.arn
+    }
+
+    output "web_acl_arn" {
+      value = aws_wafv2_web_acl.this.arn
+    }
+  TFEOF
 }
 
 inputs = {
-  name_prefix = "prism-${local.env.env}"
-  scope       = "REGIONAL"
-  alb_arn     = dependency.alb.outputs.lb_arn
-
-  # AWS Managed Rule Groups — covers OWASP Top 10, known bad inputs, IP reputation
-  managed_rules = [
-    {
-      name            = "AWSManagedRulesCommonRuleSet"
-      priority        = 10
-      override_action = "none"
-      excluded_rules  = []
-    },
-    {
-      name            = "AWSManagedRulesKnownBadInputsRuleSet"
-      priority        = 20
-      override_action = "none"
-      excluded_rules  = []
-    },
-    {
-      name            = "AWSManagedRulesAmazonIpReputationList"
-      priority        = 30
-      override_action = "none"
-      excluded_rules  = []
-    },
-  ]
-
-  # Rate limiting — throttle aggressive clients per IP
-  rate_based_rules = [
-    {
-      name     = "RateLimitPerIP"
-      priority = 40
-      action   = "block"
-      limit    = local.env.waf_rate_limit
-    }
-  ]
-
-  # CloudWatch metrics for WAF visibility
-  enable_cloudwatch_metrics = true
-  cloudwatch_metrics_name   = "prism-${local.env.env}-waf"
+  alb_arn = dependency.alb.outputs.lb_arn
 }
