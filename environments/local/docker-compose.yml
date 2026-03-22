@@ -53,6 +53,28 @@ services:
       postgres:
         condition: service_healthy
 
+  site:
+    build:
+      context: ../../apps/site
+      dockerfile: Dockerfile
+      args:
+        VITE_DASHBOARD_URL: ${VITE_DASHBOARD_URL:-http://localhost:3000}
+    container_name: prism-site
+    restart: unless-stopped
+    ports:
+      - "80:80"
+
+  ui:
+    build:
+      context: ../../apps/ui
+      dockerfile: Dockerfile
+    container_name: prism-ui
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
   ml_artifacts:

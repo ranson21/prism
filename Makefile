@@ -1,7 +1,8 @@
 .PHONY: bootstrap bootstrap-ml bootstrap-api bootstrap-web \
         dev dev-api dev-ml dev-web \
         test test-api test-ml test-web fmt lint clean \
-        db-up db-down db-reset seed-counties ingest features train score
+        db-up db-down db-reset seed-counties ingest features train score \
+        docker-build docker-up docker-down docker-logs
 
 bootstrap: bootstrap-ml bootstrap-api bootstrap-web
 
@@ -88,6 +89,18 @@ train:
 
 score:
 	curl -s -X POST http://localhost:8001/score | jq .
+
+docker-build:
+	docker compose -f environments/local/docker-compose.yml --env-file environments/local/.env build
+
+docker-up:
+	docker compose -f environments/local/docker-compose.yml --env-file environments/local/.env up -d
+
+docker-down:
+	docker compose -f environments/local/docker-compose.yml --env-file environments/local/.env down
+
+docker-logs:
+	docker compose -f environments/local/docker-compose.yml --env-file environments/local/.env logs -f
 
 clean:
 	find . -name "__pycache__" -type d -prune -exec rm -rf {} +

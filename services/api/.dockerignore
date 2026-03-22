@@ -1,0 +1,6 @@
+main
+prism-api
+bin/
+tmp/
+*.exe
+.env

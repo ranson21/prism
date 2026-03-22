@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Shield, BarChart3, Map, Zap, CheckCircle, AlertTriangle, TrendingUp, Database, ChevronRight, ChevronLeft, Clock } from 'lucide-react'
 import prismLogo from './assets/prism_logo.svg'
 
-const DASHBOARD_URL = 'http://localhost:5173'
+const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL ?? 'http://localhost:3000'
 
 export default function App() {
   return (
