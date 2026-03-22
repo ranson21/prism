@@ -145,17 +145,142 @@ See [`docs/responsible_ai.md`](docs/responsible_ai.md) for full detail.
 
 ---
 
+## Cloud Deployment (AWS)
+
+PRISM deploys to AWS using Terragrunt with three environments:
+
+| Environment | Region | Notes |
+|---|---|---|
+| `dev` | `us-east-1` | Single-AZ, Fargate Spot, micro sizing |
+| `test` | `us-east-1` | Multi-AZ, on-demand Fargate, small sizing |
+| `stable` | `us-gov-west-1` | GovCloud, 3-AZ HA, FedRAMP Moderate aligned |
+
+### Step 1 — Get your AWS credentials from the Console
+
+1. Sign in to [console.aws.amazon.com](https://console.aws.amazon.com)
+2. Click your name in the **top-right corner** — your 12-digit **Account ID** is displayed in the dropdown
+3. Click **Security credentials** → scroll to **Access keys** → **Create access key**
+4. Select **Command Line Interface (CLI)** → Next → **Create access key**
+5. Copy the **Access key ID** and **Secret access key** — the secret is only shown once
+
+### Step 2 — Install dependencies (Ubuntu)
+
+```bash
+make aws-install-deps
+```
+
+Installs Terraform, Terragrunt, and AWS CLI v2.
+
+### Step 3 — Configure AWS CLI
+
+```bash
+aws configure
+# AWS Access Key ID:     AKIA...        ← paste from Step 1
+# AWS Secret Access Key: xxxxxxxx       ← paste from Step 1
+# Default region:        us-east-1
+# Default output:        json
+```
+
+Verify credentials are working:
+
+```bash
+make aws-check
+# Expected output: your Account ID, UserId, and ARN
+```
+
+### Step 4 — Bootstrap state backend (once per AWS account)
+
+Creates the S3 bucket and DynamoDB table Terragrunt uses to store and lock state:
+
+```bash
+make aws-bootstrap
+```
+
+Override the default names if needed:
+
+```bash
+make aws-bootstrap BUCKET=my-bucket TABLE=my-lock-table
+```
+
+### Step 5 — Patch the account ID placeholder
+
+ECS image URIs contain a `ACCOUNT_ID` placeholder. Replace it with your real account ID:
+
+```bash
+make aws-patch-account
+```
+
+### Step 6 — Plan (preview without making changes)
+
+```bash
+make infra-plan-dev
+```
+
+### Step 7 — Apply the dev environment
+
+Applies resources in dependency order (vpc → s3/ecr → rds → alb → waf → ecs):
+
+```bash
+make infra-apply-dev
+```
+
+### Step 8 — Push container images to ECR
+
+```bash
+make ecr-push-dev
+```
+
+### Step 9 — Get the load balancer URL
+
+```bash
+aws elbv2 describe-load-balancers \
+  --query 'LoadBalancers[?LoadBalancerName==`prism-dev`].DNSName' \
+  --output text
+```
+
+Open that URL in your browser. HTTP redirects automatically to HTTPS.
+
+### Tear down (to avoid charges)
+
+```bash
+make infra-destroy-dev
+```
+
+### Infrastructure layout
+
+```
+environments/
+├── terragrunt.hcl          # Root: S3 state backend, AWS provider, default tags
+├── dev/
+│   ├── env.hcl             # Dev locals (single-AZ, Fargate Spot, micro sizing)
+│   ├── vpc/                # terraform-aws-modules/vpc
+│   ├── ecr/                # terraform-aws-modules/ecr
+│   ├── s3/                 # terraform-aws-modules/s3-bucket (ML artifacts)
+│   ├── rds/                # terraform-aws-modules/rds (PostgreSQL 16)
+│   ├── alb/                # terraform-aws-modules/alb (HTTPS + HTTP→HTTPS redirect)
+│   ├── waf/                # umotif-public/waf-webaclv2 (OWASP managed rules + rate limit)
+│   └── ecs/                # terraform-aws-modules/ecs (api + ml-engine + ui on Fargate)
+├── test/                   # Same structure — multi-AZ, on-demand Fargate
+└── stable/                 # Same structure — GovCloud, 3-AZ HA, FedRAMP settings
+```
+
+---
+
 ## Project Structure
 
 ```
 prism/
 ├── apps/
-│   └── ui/                  # React dashboard
+│   ├── ui/                  # React dashboard
+│   └── site/                # Landing site
 ├── services/
 │   ├── api/                 # Go REST API
 │   └── ml-engine/           # Python ingestion + ML
 ├── environments/
-│   └── local/               # Docker Compose + migrations
+│   ├── local/               # Docker Compose + migrations
+│   ├── dev/                 # AWS dev environment (Terragrunt)
+│   ├── test/                # AWS test environment (Terragrunt)
+│   └── stable/              # AWS stable/prod environment (Terragrunt, GovCloud)
 ├── docs/                    # Architecture, ML pipeline, responsible AI
 └── Makefile                 # Primary developer entrypoint
 ```
