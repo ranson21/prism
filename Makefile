@@ -11,6 +11,7 @@ export
         infra-plan-dev infra-apply-dev infra-destroy-dev \
         infra-plan-test infra-apply-test infra-destroy-test \
         ecr-login ecr-push-dev ecr-push-test \
+        deploy-static-dev deploy-static-test \
         aws-db-migrate aws-seed-data aws-alb-url aws-url
 
 bootstrap: bootstrap-ml bootstrap-api bootstrap-web
@@ -251,12 +252,8 @@ ecr-push-dev: ecr-login
 	$(eval ENV=dev)
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest       ./services/api
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest ./services/ml-engine
-	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ui:latest        ./apps/ui
-	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-site:latest      ./apps/site
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest
-	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ui:latest
-	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-site:latest
 
 ecr-push-test: ecr-login
 	$(eval ACCOUNT_ID=$(shell aws sts get-caller-identity --query Account --output text))
@@ -264,12 +261,47 @@ ecr-push-test: ecr-login
 	$(eval ENV=test)
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest       ./services/api
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest ./services/ml-engine
-	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ui:latest        ./apps/ui
-	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-site:latest      ./apps/site
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest
-	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ui:latest
-	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-site:latest
+
+# ── Static site deploy ────────────────────────────────────────────────────────
+
+# Build site + UI and upload to the CloudFront S3 bucket, then invalidate cache.
+# site → uploaded to bucket root (serves index.html at /)
+# ui  → uploaded to bucket under /app/ prefix (serves at /app/)
+deploy-static-dev:
+	$(eval ENV    ?= dev)
+	$(eval REGION ?= us-east-1)
+	$(eval BUCKET  = $(shell cd environments/$(ENV)/cloudfront && terragrunt output -raw static_bucket_name --terragrunt-non-interactive 2>/dev/null))
+	$(eval CF_ID   = $(shell cd environments/$(ENV)/cloudfront && terragrunt output -raw cloudfront_distribution_id --terragrunt-non-interactive 2>/dev/null))
+	@echo "→ Building site..."
+	cd apps/site && VITE_DASHBOARD_URL=/app npm run build
+	@echo "→ Building UI..."
+	cd apps/ui  && npm run build -- --base=/app/
+	@echo "→ Uploading site to s3://$(BUCKET)/..."
+	aws s3 sync apps/site/dist/ s3://$(BUCKET)/ --delete --region $(REGION)
+	@echo "→ Uploading UI to s3://$(BUCKET)/app/..."
+	aws s3 sync apps/ui/dist/  s3://$(BUCKET)/app/ --delete --region $(REGION)
+	@echo "→ Invalidating CloudFront cache..."
+	aws cloudfront create-invalidation --distribution-id $(CF_ID) --paths "/*" --region $(REGION)
+	@echo "✓ Static deploy complete"
+
+deploy-static-test:
+	$(eval ENV    ?= test)
+	$(eval REGION ?= us-east-1)
+	$(eval BUCKET  = $(shell cd environments/$(ENV)/cloudfront && terragrunt output -raw static_bucket_name --terragrunt-non-interactive 2>/dev/null))
+	$(eval CF_ID   = $(shell cd environments/$(ENV)/cloudfront && terragrunt output -raw cloudfront_distribution_id --terragrunt-non-interactive 2>/dev/null))
+	@echo "→ Building site..."
+	cd apps/site && VITE_DASHBOARD_URL=/app npm run build
+	@echo "→ Building UI..."
+	cd apps/ui  && npm run build -- --base=/app/
+	@echo "→ Uploading site to s3://$(BUCKET)/..."
+	aws s3 sync apps/site/dist/ s3://$(BUCKET)/ --delete --region $(REGION)
+	@echo "→ Uploading UI to s3://$(BUCKET)/app/..."
+	aws s3 sync apps/ui/dist/  s3://$(BUCKET)/app/ --delete --region $(REGION)
+	@echo "→ Invalidating CloudFront cache..."
+	aws cloudfront create-invalidation --distribution-id $(CF_ID) --paths "/*" --region $(REGION)
+	@echo "✓ Static deploy complete"
 
 # ── Seeding & data pipeline ───────────────────────────────────────────────────
 
