@@ -67,8 +67,8 @@ _Required artifacts for judging on Technical Soundness and Explainability._
 ## Demo Assets
 _Required for Demo Clarity and Mission Relevance judging._
 
-- [ ] **5-minute "Path to Agency Pilot" briefing** — slide deck or one-pager covering: problem statement, PRISM solution overview, live demo flow, agency adoption path, and responsible AI commitments; store in `docs/agency_pilot_brief.md` or `docs/pitch/`
-- [ ] Demo script / talking points aligned to judging narrative: "Where should we act right now, and why?"
+- [x] **5-minute "Path to Agency Pilot" briefing** — problem statement, solution overview, 5-scene demo flow (site → dashboard → explain → scenario → back to site), adoption path, responsible AI commitments, technical credentials; `docs/agency_pilot_brief.md`
+- [x] **Demo script / talking points** — 5-scene script with URLs, on-screen actions, talking points, Q&A prep, key numbers; opens on landing site (`http://localhost`), transitions to dashboard (`http://localhost:3000`); `docs/demo_script.md`
 
 ## UI — Agency Pilot & Responsible AI Gaps
 _Site currently has no in-app narrative for agency adoption or visible responsible AI commitments._
@@ -89,6 +89,7 @@ _Site currently has no in-app narrative for agency adoption or visible responsib
 - [ ] Add the ability to save simulations
 - [ ] Make the risk levels at the top filter options so we can display onlt criticals, elevetated etc.
 - [ ] Add filter dropdown to risk rankings to toggle the number and types of rankings shown
+- [ ] Auto zoom selected county to a comfortable zoom level that shows surrounding counties but not the whole zoomed out map, this should also work when the app loads to zoom on the default
 
 --- 
 
