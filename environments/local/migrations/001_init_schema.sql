@@ -45,7 +45,7 @@ CREATE TABLE datasets.sources (
 );
 
 INSERT INTO datasets.sources (source_key, display_name, base_url, description) VALUES
-    ('fema', 'FEMA OpenFEMA', 'https://www.fema.gov/api/open/v2',
+    ('fema', 'FEMA OpenFEMA', 'https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries',
      'Federal Emergency Management Agency disaster declarations'),
     ('noaa', 'NOAA Storm Events', 'https://www.ncei.noaa.gov/cdo-web/api/v2',
      'NOAA National Centers for Environmental Information storm events'),
