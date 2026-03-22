@@ -100,15 +100,16 @@ func (h *Handler) explain(c *gin.Context) {
 	_ = json.Unmarshal(score.TopDrivers, &drivers)
 
 	c.JSON(http.StatusOK, gin.H{
-		"fips_code":   score.FipsCode,
-		"county_name": score.CountyName,
-		"state_name":  score.StateName,
-		"state_abbr":  score.StateAbbr,
-		"population":  score.Population,
-		"risk_score":  numericToFloat(score.RiskScore),
-		"risk_level":  score.RiskLevel,
-		"top_drivers": drivers,
-		"score_date":  score.ScoreDate.Time.Format("2006-01-02"),
+		"fips_code":               score.FipsCode,
+		"county_name":             score.CountyName,
+		"state_name":              score.StateName,
+		"state_abbr":              score.StateAbbr,
+		"population":              score.Population,
+		"median_household_income": score.MedianHouseholdIncome,
+		"risk_score":              numericToFloat(score.RiskScore),
+		"risk_level":              score.RiskLevel,
+		"top_drivers":             drivers,
+		"score_date":              score.ScoreDate.Time.Format("2006-01-02"),
 		"features": gin.H{
 			"disaster_count":           features.DisasterCount,
 			"major_disaster_count":     features.MajorDisasterCount,

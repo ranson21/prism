@@ -8,7 +8,7 @@ const FACTOR_LABEL: Record<string, string> = {
   severe_weather_count:      'Severe Weather',
   hazard_frequency_score:    'Hazard Frequency',
   population_exposure:       'Population Exposure',
-  economic_exposure:         'Economic Exposure',
+  economic_exposure:         'Economic Risk',
   earthquake_count:          'Earthquakes',
   max_earthquake_magnitude:  'Max Magnitude',
   disaster_count:            'Disasters',
@@ -84,8 +84,8 @@ export function ExplainPanel({ fips }: Props) {
           ['Earthquake Events', data.features.earthquake_count],
           ['Disaster Declarations', data.features.disaster_count],
           ['Major Disasters (FEMA)', data.features.major_disaster_count],
-          ['Economic Exposure', data.features.economic_exposure != null
-            ? `$${Number(data.features.economic_exposure).toLocaleString('en-US', { maximumFractionDigits: 0 })}k`
+          ['Median Household Income', data.median_household_income != null
+            ? `$${Number(data.median_household_income).toLocaleString('en-US')}`
             : 'N/A'],
         ].map(([label, val]) => (
           <div key={String(label)} className="bg-[#1F2937] rounded-lg px-3 py-2">

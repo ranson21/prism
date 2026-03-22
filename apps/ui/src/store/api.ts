@@ -51,6 +51,7 @@ export interface CountyFeatures {
 
 export interface CountyDetail extends RankedCounty {
   state_name: string
+  median_household_income: number | null
   features: CountyFeatures
 }
 

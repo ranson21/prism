@@ -81,6 +81,7 @@ SELECT
     c.state_name,
     c.state_abbr,
     c.population,
+    c.median_household_income,
     s.risk_score,
     s.risk_level,
     s.top_drivers,
@@ -93,15 +94,16 @@ WHERE s.fips_code = $1
 `
 
 type GetCountyScoreRow struct {
-	FipsCode   string         `json:"fips_code"`
-	CountyName string         `json:"county_name"`
-	StateName  string         `json:"state_name"`
-	StateAbbr  string         `json:"state_abbr"`
-	Population *int32         `json:"population"`
-	RiskScore  pgtype.Numeric `json:"risk_score"`
-	RiskLevel  string         `json:"risk_level"`
-	TopDrivers []byte         `json:"top_drivers"`
-	ScoreDate  pgtype.Date    `json:"score_date"`
+	FipsCode               string         `json:"fips_code"`
+	CountyName             string         `json:"county_name"`
+	StateName              string         `json:"state_name"`
+	StateAbbr              string         `json:"state_abbr"`
+	Population             *int32         `json:"population"`
+	MedianHouseholdIncome  *int32         `json:"median_household_income"`
+	RiskScore              pgtype.Numeric `json:"risk_score"`
+	RiskLevel              string         `json:"risk_level"`
+	TopDrivers             []byte         `json:"top_drivers"`
+	ScoreDate              pgtype.Date    `json:"score_date"`
 }
 
 func (q *Queries) GetCountyScore(ctx context.Context, fipsCode string) (GetCountyScoreRow, error) {
@@ -113,6 +115,7 @@ func (q *Queries) GetCountyScore(ctx context.Context, fipsCode string) (GetCount
 		&i.StateName,
 		&i.StateAbbr,
 		&i.Population,
+		&i.MedianHouseholdIncome,
 		&i.RiskScore,
 		&i.RiskLevel,
 		&i.TopDrivers,

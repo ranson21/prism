@@ -38,6 +38,7 @@ SELECT
     c.state_name,
     c.state_abbr,
     c.population,
+    c.median_household_income,
     s.risk_score,
     s.risk_level,
     s.top_drivers,
