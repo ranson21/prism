@@ -22,6 +22,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/summary", h.summary)
 	rg.GET("/rankings", h.rankings)
 	rg.GET("/explain/:fips", h.explain)
+	rg.GET("/history/:fips", h.history)
 }
 
 func (h *Handler) summary(c *gin.Context) {
@@ -121,6 +122,24 @@ func (h *Handler) explain(c *gin.Context) {
 			"economic_exposure":        features.EconomicExposure,
 		},
 	})
+}
+
+func (h *Handler) history(c *gin.Context) {
+	fips := c.Param("fips")
+	rows, err := h.q.GetCountyHistory(c.Request.Context(), fips)
+	if err != nil || len(rows) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no history found for county"})
+		return
+	}
+	out := make([]gin.H, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, gin.H{
+			"score_date": r.ScoreDate.Time.Format("2006-01-02"),
+			"risk_score": numericToFloat(r.RiskScore),
+			"risk_level": r.RiskLevel,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"history": out})
 }
 
 func formatRankings(rows []store.GetRankingsRow) []gin.H {

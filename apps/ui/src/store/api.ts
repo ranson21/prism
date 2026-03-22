@@ -55,6 +55,16 @@ export interface CountyDetail extends RankedCounty {
   features: CountyFeatures
 }
 
+export interface HistoryEntry {
+  score_date: string
+  risk_score: number
+  risk_level: 'low' | 'moderate' | 'elevated' | 'critical'
+}
+
+export interface HistoryResponse {
+  history: HistoryEntry[]
+}
+
 export interface SimulateRequest {
   name: string
   description?: string
@@ -93,6 +103,9 @@ export const prismApi = createApi({
     getCountyDetail: builder.query<CountyDetail, string>({
       query: (fips) => `/risk/explain/${fips}`,
     }),
+    getCountyHistory: builder.query<HistoryResponse, string>({
+      query: (fips) => `/risk/history/${fips}`,
+    }),
     simulate: builder.mutation<SimulateResponse, SimulateRequest>({
       query: (body) => ({
         url: '/scenarios/simulate',
@@ -107,5 +120,6 @@ export const {
   useGetSummaryQuery,
   useGetRankingsQuery,
   useGetCountyDetailQuery,
+  useGetCountyHistoryQuery,
   useSimulateMutation,
 } = prismApi

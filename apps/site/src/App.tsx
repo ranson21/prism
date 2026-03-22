@@ -1,4 +1,5 @@
-import { Shield, BarChart3, Map, Zap, CheckCircle, AlertTriangle, TrendingUp, Database, ChevronRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Shield, BarChart3, Map, Zap, CheckCircle, AlertTriangle, TrendingUp, Database, ChevronRight, ChevronLeft, Clock } from 'lucide-react'
 import prismLogo from './assets/prism_logo.svg'
 
 const DASHBOARD_URL = 'http://localhost:5173'
@@ -163,6 +164,8 @@ function SolutionSection() {
   const capabilities = [
     'County-level risk scores updated from live public feeds',
     'Explainable AI — every score shows its top contributing factors',
+    'Economic risk proxy from Census ACS median household income',
+    'Historical trend comparison — track how risk has shifted over time',
     'Scenario simulation to model hypothetical disaster impacts',
     'Ranked prioritization so resources go to highest-need counties first',
     'Built on open public data — FEMA, NWS, USGS, Census Bureau',
@@ -237,7 +240,7 @@ function HowItWorks() {
       number: '02',
       icon: BarChart3,
       title: 'Engineer Risk Features',
-      body: 'Raw events are aggregated per county into quantitative features: disaster frequency, weather severity, seismic magnitude, and population exposure over a 90-day rolling window.',
+      body: 'Raw events are aggregated per county into quantitative features: disaster frequency, weather severity, seismic magnitude, population exposure, and economic risk derived from Census ACS median household income — all over a 90-day rolling window.',
     },
     {
       number: '03',
@@ -287,49 +290,185 @@ function HowItWorks() {
 
 /* ── Explainability ──────────────────────────────────────────────────── */
 
+const EXAMPLE_COUNTIES = [
+  {
+    county: 'San Diego County, CA',
+    score: 81.4,
+    level: 'critical' as const,
+    trend: '+4.2',
+    trendDir: 'up' as const,
+    drivers: [
+      { label: 'Severe Weather', value: 72 },
+      { label: 'Hazard Frequency', value: 58 },
+      { label: 'Population Exposure', value: 44 },
+      { label: 'Economic Risk', value: 36 },
+      { label: 'Earthquake Activity', value: 19 },
+    ],
+    stats: [['Weather Alerts', '47'], ['Major Disasters', '8'], ['Earthquake Events', '3'], ['Median HH Income', '$72,184']],
+  },
+  {
+    county: 'Honolulu County, HI',
+    score: 55.3,
+    level: 'elevated' as const,
+    trend: '-1.2',
+    trendDir: 'down' as const,
+    drivers: [
+      { label: 'Hazard Frequency', value: 64 },
+      { label: 'Severe Weather', value: 48 },
+      { label: 'Economic Risk', value: 28 },
+      { label: 'Population Exposure', value: 21 },
+      { label: 'Earthquake Activity', value: 11 },
+    ],
+    stats: [['Weather Alerts', '42'], ['Major Disasters', '0'], ['Earthquake Events', '0'], ['Median HH Income', '$85,857']],
+  },
+  {
+    county: 'Harris County, TX',
+    score: 34.1,
+    level: 'moderate' as const,
+    trend: '+2.8',
+    trendDir: 'up' as const,
+    drivers: [
+      { label: 'Population Exposure', value: 55 },
+      { label: 'Severe Weather', value: 38 },
+      { label: 'Economic Risk', value: 22 },
+      { label: 'Disaster Declarations', value: 14 },
+      { label: 'Hazard Frequency', value: 9 },
+    ],
+    stats: [['Weather Alerts', '18'], ['Major Disasters', '3'], ['Earthquake Events', '0'], ['Median HH Income', '$57,791']],
+  },
+  {
+    county: 'Laramie County, WY',
+    score: 12.8,
+    level: 'low' as const,
+    trend: '-0.5',
+    trendDir: 'down' as const,
+    drivers: [
+      { label: 'Hazard Frequency', value: 31 },
+      { label: 'Earthquake Activity', value: 22 },
+      { label: 'Severe Weather', value: 18 },
+      { label: 'Population Exposure', value: 12 },
+      { label: 'Economic Risk', value: 7 },
+    ],
+    stats: [['Weather Alerts', '4'], ['Major Disasters', '0'], ['Earthquake Events', '1'], ['Median HH Income', '$61,394']],
+  },
+]
+
+const LEVEL_STYLES = {
+  critical: { bar: 'bg-red-500/80',    badge: 'bg-red-500/15 text-red-400',    score: 'text-red-400'    },
+  elevated: { bar: 'bg-orange-500/80', badge: 'bg-orange-500/15 text-orange-400', score: 'text-orange-400' },
+  moderate: { bar: 'bg-yellow-500/80', badge: 'bg-yellow-500/15 text-yellow-400', score: 'text-yellow-400' },
+  low:      { bar: 'bg-green-500/80',  badge: 'bg-green-500/15 text-green-400',  score: 'text-green-400'  },
+}
+
 function ExplainabilitySection() {
-  const drivers = [
-    { label: 'Severe Weather', value: 72 },
-    { label: 'Hazard Frequency', value: 58 },
-    { label: 'Population Exposure', value: 44 },
-    { label: 'Disaster Declarations', value: 31 },
-    { label: 'Earthquake Activity', value: 19 },
-  ]
+  const [idx, setIdx] = useState(0)
+
+  function goTo(next: number) {
+    setIdx((next + EXAMPLE_COUNTIES.length) % EXAMPLE_COUNTIES.length)
+  }
+
+  useEffect(() => {
+    const timer = setInterval(() => setIdx((i) => (i + 1) % EXAMPLE_COUNTIES.length), 4500)
+    return () => clearInterval(timer)
+  }, [])
 
   return (
     <section id="explainability" className="py-24 px-6 border-t border-white/5">
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-        <div className="rounded-2xl bg-[#111827] border border-white/10 p-6">
-          <div className="mb-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Risk Explainability</p>
-            <p className="text-lg font-semibold text-slate-100">San Diego County, CA</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-3xl font-bold text-red-400 tabular-nums">81.4</span>
-              <span className="text-xs text-slate-500">/ 100</span>
-              <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-red-500/15 text-red-400 uppercase">Critical</span>
+
+        {/* Carousel card */}
+        <div className="relative">
+          {/* All cards stacked in the same grid cell — CSS crossfade, nothing unmounts */}
+          <div className="grid" aria-live="polite" aria-atomic="true">
+            {EXAMPLE_COUNTIES.map((c, i) => {
+              const s = LEVEL_STYLES[c.level]
+              return (
+                <div
+                  key={c.county}
+                  aria-hidden={i !== idx}
+                  className="[grid-column:1] [grid-row:1] rounded-2xl bg-[#111827] border border-white/10 p-6 transition-opacity duration-700 ease-in-out motion-reduce:transition-none"
+                  style={{ opacity: i === idx ? 1 : 0, pointerEvents: i === idx ? 'auto' : 'none', zIndex: i === idx ? 1 : 0 }}
+                >
+                  {/* Header */}
+                  <div className="mb-5">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Risk Explainability</p>
+                    <p className="text-lg font-semibold text-slate-100">{c.county}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-3xl font-bold tabular-nums ${s.score}`}>{c.score}</span>
+                      <span className="text-xs text-slate-500">/ 100</span>
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold uppercase ${s.badge}`}>{c.level}</span>
+                    </div>
+                  </div>
+
+                  {/* Drivers */}
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Top Risk Drivers</p>
+                  <div className="space-y-3">
+                    {c.drivers.map((d) => (
+                      <div key={d.label}>
+                        <div className="flex justify-between text-xs text-slate-400 mb-1">
+                          <span>{d.label}</span>
+                          <span className="font-mono">{d.value}%</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-[#1F2937]">
+                          <div className={`h-1.5 rounded-full ${s.bar}`} style={{ width: `${d.value}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Stat cards */}
+                  <div className="mt-5 grid grid-cols-2 gap-2">
+                    {c.stats.map(([label, val]) => (
+                      <div key={label} className="bg-[#1F2937] rounded-lg px-3 py-2">
+                        <p className="text-xs text-slate-500">{label}</p>
+                        <p className="text-base font-semibold text-slate-100">{val}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Trend */}
+                  <div className="mt-3 border-t border-white/5 pt-3 flex items-center gap-2 text-xs text-slate-500">
+                    <Clock size={11} className="text-slate-600" />
+                    <span>
+                      6-month trend — risk{' '}
+                      <span className={`font-medium ${c.trendDir === 'up' ? 'text-orange-400' : 'text-green-400'}`}>
+                        {c.trend}
+                      </span>{' '}
+                      since Sep 2025
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between mt-4 px-1">
+            <button
+              onClick={() => goTo(idx - 1)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#1F2937] border border-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={14} />
+            </button>
+
+            <div className="flex gap-2">
+              {EXAMPLE_COUNTIES.map((c, i) => (
+                <button
+                  key={c.county}
+                  onClick={() => goTo(i)}
+                  className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                    i === idx ? 'bg-blue-500 w-4' : 'bg-slate-700 hover:bg-slate-500'
+                  }`}
+                />
+              ))}
             </div>
-          </div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Top Risk Drivers</p>
-          <div className="space-y-3">
-            {drivers.map((d) => (
-              <div key={d.label}>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>{d.label}</span>
-                  <span className="font-mono">{d.value}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-[#1F2937]">
-                  <div className="h-1.5 rounded-full bg-red-500/80" style={{ width: `${d.value}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            {[['Severe Weather Alerts', '47'], ['Disaster Declarations', '12'], ['Earthquake Events', '3'], ['Major Disasters', '8']].map(([label, val]) => (
-              <div key={label} className="bg-[#1F2937] rounded-lg px-3 py-2">
-                <p className="text-xs text-slate-500">{label}</p>
-                <p className="text-base font-semibold text-slate-100">{val}</p>
-              </div>
-            ))}
+
+            <button
+              onClick={() => goTo(idx + 1)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#1F2937] border border-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <ChevronRight size={14} />
+            </button>
           </div>
         </div>
 
@@ -342,12 +481,12 @@ function ExplainabilitySection() {
             PRISM doesn't just rank counties — it breaks down every risk score into
             its contributing factors. Emergency managers can see precisely what
             is driving risk in any county: weather severity, disaster history,
-            seismic activity, or population exposure.
+            seismic activity, population exposure, and economic vulnerability.
           </p>
           <div className="space-y-4">
             {[
-              { title: 'Traceable to public data', body: 'Every driver links back to a specific FEMA, NWS, or USGS record — no unexplainable black-box scores.' },
-              { title: 'Auditable by design', body: 'Model versions are versioned and stored. Scores can be reproduced and reviewed after the fact.' },
+              { title: 'Traceable to public data', body: 'Every driver links back to a specific FEMA, NWS, USGS, or Census record — no unexplainable black-box scores.' },
+              { title: 'Historical trend comparison', body: 'Switch to the History tab on any county to see how its risk score has evolved month-over-month — so you can act on trends, not just snapshots.' },
               { title: 'Built for human judgment', body: "PRISM supports decisions — it doesn't replace them. Planners retain full authority over resource allocation." },
             ].map((f) => (
               <div key={f.title} className="flex gap-3">
@@ -370,7 +509,7 @@ function ExplainabilitySection() {
 function StatsSection() {
   const stats = [
     { value: '3,200+', label: 'Counties scored nationwide' },
-    { value: '3', label: 'Live public data sources' },
+    { value: '4', label: 'Live public data sources' },
     { value: '90-day', label: 'Rolling risk window' },
     { value: '100%', label: 'Open public data — no licensing fees' },
   ]

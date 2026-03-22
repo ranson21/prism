@@ -70,6 +70,9 @@ db-reset:
 seed-counties:
 	cd services/ml-engine && poetry run python -m app.geography.seed_counties
 
+seed-history:
+	cd services/ml-engine && poetry run python -m app.scoring.seed_history
+
 ingest:
 	curl -s -X POST http://localhost:8001/ingest \
 	  -H "Content-Type: application/json" \
