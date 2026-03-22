@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useGetSummaryQuery, useGetRankingsQuery, type SimResult } from './store/api'
+import { formatDateTime } from './lib/dates'
 import { RiskMap } from './components/RiskMap'
 import { RankingsTable } from './components/RankingsTable'
 import { ExplainPanel } from './components/ExplainPanel'
@@ -61,11 +62,6 @@ export default function App() {
             <p className="text-xs text-slate-400 mt-0.5">Prioritization of Risk &amp; Incident Support Model</p>
           </div>
         </div>
-        {summary && (
-          <p className="text-xs text-slate-500">
-            Last scored: {summary.top_counties[0]?.score_date ?? '—'}
-          </p>
-        )}
       </header>
 
       {/* Tab nav */}
@@ -117,12 +113,13 @@ export default function App() {
             {/* Map */}
             <div className="flex flex-col gap-2 min-h-0">
               <p className="text-xs text-slate-400 uppercase tracking-wider shrink-0">County Risk Heatmap</p>
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 relative">
                 <RiskMap
                   rankings={counties}
                   selectedFips={selectedFips}
                   onSelect={setSelectedFips}
                 />
+                <ScoreTimestamp scoreDate={summary?.top_counties[0]?.score_date} />
               </div>
               <p className="text-xs text-slate-500 shrink-0">
                 Click a county to view explainability details. Color encodes risk level.
@@ -160,7 +157,7 @@ export default function App() {
                   </button>
                 )}
               </div>
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 relative">
                 <RiskMap
                   rankings={scenarioCounties}
                   selectedFips={selectedFips}
@@ -168,6 +165,7 @@ export default function App() {
                   highlightFips={simFips}
                   focusHighlighted={focusSelected}
                 />
+                <ScoreTimestamp scoreDate={summary?.top_counties[0]?.score_date} />
               </div>
               <p className="text-xs text-slate-500 shrink-0">
                 {simResults
@@ -180,11 +178,24 @@ export default function App() {
       </main>
 
       <footer className="px-6 py-3 border-t border-white/10 flex items-center justify-between shrink-0">
+
         <p className="text-xs text-slate-600">
           Data sources: FEMA OpenFEMA · NWS Alerts · USGS Earthquake Catalog
         </p>
         <p className="text-xs text-slate-600">Powered by Sky Solutions LLC</p>
       </footer>
+    </div>
+  )
+}
+
+function ScoreTimestamp({ scoreDate }: { scoreDate?: string }) {
+  if (!scoreDate) return null
+  const { date, time } = formatDateTime(scoreDate)
+  return (
+    <div className="absolute top-3 right-3 text-right bg-[#0F172A]/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
+      <p className="text-[10px] italic text-slate-500 leading-none">Last Scored at</p>
+      <p className="text-xs font-semibold text-slate-200 mt-1 leading-none">{date}</p>
+      <p className="text-[10px] text-slate-500 mt-1 leading-none">{time}</p>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { RiskBadge } from './RiskBadge'
 import { riskColor } from '../lib/risk'
+import { formatDate } from '../lib/dates'
 import { useGetCountyDetailQuery } from '../store/api'
 
 const FACTOR_LABEL: Record<string, string> = {
@@ -50,7 +51,7 @@ export function ExplainPanel({ fips }: Props) {
         </div>
         <div className="text-sm text-slate-400 space-y-1">
           <p>Population: <span className="text-slate-200">{data.population?.toLocaleString() ?? 'N/A'}</span></p>
-          <p>Score date: <span className="text-slate-200">{data.score_date}</span></p>
+          <p>Score date: <span className="text-slate-200">{formatDate(data.score_date)}</span></p>
           <p>FIPS: <span className="text-slate-200 font-mono">{data.fips_code}</span></p>
         </div>
       </div>
