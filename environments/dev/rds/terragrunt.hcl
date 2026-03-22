@@ -10,8 +10,17 @@ locals {
 dependency "vpc" {
   config_path = "../vpc"
   mock_outputs = {
-    vpc_id          = "vpc-00000000"
-    database_subnets = ["subnet-00000001", "subnet-00000002"]
+    vpc_id                     = "vpc-00000000"
+    database_subnets           = ["subnet-00000001", "subnet-00000002"]
+    database_subnet_group_name = "prism-dev-db-subnet-group"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+dependency "sg" {
+  config_path = "../sg"
+  mock_outputs = {
+    rds_sg_id = "sg-00000003"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
@@ -36,9 +45,12 @@ inputs = {
   username = "prism"
   port     = 5432
 
+  # RDS manages the password in Secrets Manager automatically — no manual secret needed
+  manage_master_user_password = true
+
   multi_az               = local.env.db_multi_az
   db_subnet_group_name   = dependency.vpc.outputs.database_subnet_group_name
-  vpc_security_group_ids = [dependency.vpc.outputs.default_security_group_id]
+  vpc_security_group_ids = [dependency.sg.outputs.rds_sg_id]
 
   # Backups
   backup_retention_period = local.env.env == "stable" ? 30 : 7

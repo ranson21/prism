@@ -16,58 +16,69 @@ dependency "vpc" {
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
+dependency "sg" {
+  config_path = "../sg"
+  mock_outputs = {
+    alb_sg_id = "sg-00000001"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
 terraform {
-  source = "tfr:///terraform-aws-modules/alb/aws?version=9.9.0"
+  source = "tfr:///terraform-aws-modules/alb/aws?version=8.7.0"
 }
 
 inputs = {
-  name    = "prism-${local.env.env}"
-  vpc_id  = dependency.vpc.outputs.vpc_id
-  subnets = dependency.vpc.outputs.public_subnets
+  name            = "prism-${local.env.env}"
+  vpc_id          = dependency.vpc.outputs.vpc_id
+  subnets         = dependency.vpc.outputs.public_subnets
+  security_groups = [dependency.sg.outputs.alb_sg_id]
 
-  # HTTPS only — redirect HTTP → HTTPS
-  listeners = {
-    https = {
-      port            = 443
-      protocol        = "HTTPS"
-      certificate_arn = "" # set via ACM after cert provisioning
-      forward = {
-        target_group_key = "ui"
-      }
+  http_tcp_listeners = [
+    {
+      port               = 80
+      protocol           = "HTTP"
+      action_type        = "forward"
+      target_group_index = 0
     }
-    http_redirect = {
-      port     = 80
-      protocol = "HTTP"
-      redirect = {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
-    }
-  }
+  ]
 
-  target_groups = {
-    ui = {
+  http_tcp_listener_rules = [
+    {
+      http_tcp_listener_index = 0
+      priority                = 1
+      actions = [{
+        type               = "forward"
+        target_group_index = 1
+      }]
+      conditions = [{
+        path_patterns = ["/api/*"]
+      }]
+    }
+  ]
+
+  target_groups = [
+    {
       name             = "prism-${local.env.env}-ui"
-      protocol         = "HTTP"
-      port             = 80
-      target_type      = "ip"    # Fargate uses IP targets
+      backend_protocol = "HTTP"
+      backend_port     = 3000
+      target_type      = "ip"
       health_check = {
         enabled             = true
         path                = "/health"
         healthy_threshold   = 2
         unhealthy_threshold = 3
       }
-    }
-    api = {
-      name        = "prism-${local.env.env}-api"
-      protocol    = "HTTP"
-      port        = 8080
-      target_type = "ip"
+    },
+    {
+      name             = "prism-${local.env.env}-api"
+      backend_protocol = "HTTP"
+      backend_port     = 8080
+      target_type      = "ip"
       health_check = {
         enabled = true
         path    = "/health"
       }
     }
-  }
+  ]
 }

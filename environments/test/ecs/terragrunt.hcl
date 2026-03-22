@@ -19,7 +19,18 @@ dependency "vpc" {
 dependency "alb" {
   config_path = "../alb"
   mock_outputs = {
-    target_groups = { ui = { arn = "arn:aws:..." }, api = { arn = "arn:aws:..." } }
+    target_group_arns = [
+      "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/prism-test-ui/aaa",
+      "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/prism-test-api/bbb",
+    ]
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+dependency "sg" {
+  config_path = "../sg"
+  mock_outputs = {
+    ecs_sg_id = "sg-00000002"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
@@ -27,8 +38,9 @@ dependency "alb" {
 dependency "rds" {
   config_path = "../rds"
   mock_outputs = {
-    db_instance_endpoint = "prism-test.abc123.us-east-1.rds.amazonaws.com"
-    db_instance_port     = 5432
+    db_instance_endpoint               = "prism-test.abc123.us-east-1.rds.amazonaws.com"
+    db_instance_port                   = 5432
+    db_instance_master_user_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:rds!db-prism-test-mock"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
@@ -74,22 +86,23 @@ inputs = {
 
       container_definitions = {
         api = {
-          image     = "ACCOUNT_ID.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-api:latest"
+          image     = "119004746646.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-api:latest"
           essential = true
           port_mappings = [{ containerPort = 8080, protocol = "tcp" }]
           environment = [
             { name = "DATABASE_URL", value = "postgresql://prism@${dependency.rds.outputs.db_instance_endpoint}:5432/prism" }
           ]
           secrets = [
-            { name = "DB_PASSWORD", valueFrom = "arn:aws:secretsmanager:${local.env.region}:ACCOUNT_ID:secret:prism-${local.env.env}-db-password" }
+            { name = "DB_PASSWORD", valueFrom = dependency.rds.outputs.db_instance_master_user_secret_arn }
           ]
         }
       }
 
-      subnet_ids             = dependency.vpc.outputs.private_subnets
+      subnet_ids         = dependency.vpc.outputs.private_subnets
+      security_group_ids = [dependency.sg.outputs.ecs_sg_id]
       load_balancer = {
         service = {
-          target_group_arn = dependency.alb.outputs.target_groups["api"].arn
+          target_group_arn = dependency.alb.outputs.target_group_arns[1]
           container_name   = "api"
           container_port   = 8080
         }
@@ -103,7 +116,7 @@ inputs = {
 
       container_definitions = {
         ml-engine = {
-          image     = "ACCOUNT_ID.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-ml-engine:latest"
+          image     = "119004746646.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-ml-engine:latest"
           essential = true
           port_mappings = [{ containerPort = 8001, protocol = "tcp" }]
           environment = [
@@ -111,12 +124,13 @@ inputs = {
             { name = "ARTIFACT_S3_BUCKET", value = dependency.s3.outputs.s3_bucket_id }
           ]
           secrets = [
-            { name = "DB_PASSWORD", valueFrom = "arn:aws:secretsmanager:${local.env.region}:ACCOUNT_ID:secret:prism-${local.env.env}-db-password" }
+            { name = "DB_PASSWORD", valueFrom = dependency.rds.outputs.db_instance_master_user_secret_arn }
           ]
         }
       }
 
-      subnet_ids = dependency.vpc.outputs.private_subnets
+      subnet_ids         = dependency.vpc.outputs.private_subnets
+      security_group_ids = [dependency.sg.outputs.ecs_sg_id]
     }
 
     # ── React UI ─────────────────────────────────────────────────────────────
@@ -126,7 +140,7 @@ inputs = {
 
       container_definitions = {
         ui = {
-          image     = "ACCOUNT_ID.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-ui:latest"
+          image     = "119004746646.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-ui:latest"
           essential = true
           port_mappings = [{ containerPort = 3000, protocol = "tcp" }]
         }
@@ -135,7 +149,7 @@ inputs = {
       subnet_ids = dependency.vpc.outputs.private_subnets
       load_balancer = {
         service = {
-          target_group_arn = dependency.alb.outputs.target_groups["ui"].arn
+          target_group_arn = dependency.alb.outputs.target_group_arns[0]
           container_name   = "ui"
           container_port   = 3000
         }

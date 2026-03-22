@@ -13,7 +13,14 @@ dependency "vpc" {
     vpc_id                     = "vpc-00000000"
     database_subnets           = ["subnet-00000001", "subnet-00000002", "subnet-00000003"]
     database_subnet_group_name = "prism-stable-db-subnet-group"
-    default_security_group_id  = "sg-00000000"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+dependency "sg" {
+  config_path = "../sg"
+  mock_outputs = {
+    rds_sg_id = "sg-00000003"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
@@ -38,9 +45,11 @@ inputs = {
   username = "prism"
   port     = 5432
 
+  manage_master_user_password = true
+
   multi_az               = local.env.db_multi_az
   db_subnet_group_name   = dependency.vpc.outputs.database_subnet_group_name
-  vpc_security_group_ids = [dependency.vpc.outputs.default_security_group_id]
+  vpc_security_group_ids = [dependency.sg.outputs.rds_sg_id]
 
   # Backups
   backup_retention_period = local.env.env == "stable" ? 30 : 7
