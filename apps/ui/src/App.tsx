@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useGetSummaryQuery, useGetRankingsQuery, type SimResult } from './store/api'
 import { formatDateTime } from './lib/dates'
 import { RiskMap } from './components/RiskMap'
@@ -26,6 +26,32 @@ export default function App() {
   const { data: rankings, isLoading } = useGetRankingsQuery({ limit: 100 })
 
   const counties = rankings?.rankings ?? []
+
+  useEffect(() => {
+    if (selectedFips || !counties.length) return
+
+    const fallback = () => setSelectedFips(counties[0].fips_code)
+
+    if (!navigator.geolocation) { fallback(); return }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords
+        try {
+          const res = await fetch(
+            `https://geocoding.geo.census.gov/geocoder/geographies/coordinates?x=${lon}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current&format=json`
+          )
+          const data = await res.json()
+          const fips: string | undefined = data?.result?.geographies?.Counties?.[0]?.GEOID
+          setSelectedFips(fips ?? counties[0].fips_code)
+        } catch {
+          fallback()
+        }
+      },
+      fallback,
+      { timeout: 5000 }
+    )
+  }, [counties])
 
   const simSelectedCounties = useMemo(
     () => counties.filter((c) => simFips.has(c.fips_code)),

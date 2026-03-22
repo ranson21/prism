@@ -109,6 +109,8 @@ func (h *Handler) explain(c *gin.Context) {
 		"median_household_income": score.MedianHouseholdIncome,
 		"risk_score":              numericToFloat(score.RiskScore),
 		"risk_level":              score.RiskLevel,
+		"confidence_lower":        numericToFloat(score.ConfidenceLower),
+		"confidence_upper":        numericToFloat(score.ConfidenceUpper),
 		"top_drivers":             drivers,
 		"score_date":              score.ScoreDate.Time.Format("2006-01-02"),
 		"features": gin.H{

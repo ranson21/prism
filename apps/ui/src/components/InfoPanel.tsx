@@ -90,6 +90,29 @@ export function InfoPanel({ onClose }: Props) {
             </div>
           </section>
 
+          {/* Confidence band */}
+          <section>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Confidence Band</p>
+            <div className="bg-[#1F2937] rounded-xl px-4 py-4 space-y-3">
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Each risk score is accompanied by a <span className="text-slate-200 font-medium">confidence band</span> — a lower and upper bound derived from the spread of predictions across all decision trees in the random forest model.
+              </p>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 shrink-0" />
+                  <p className="text-xs text-slate-400"><span className="text-slate-200">Narrow band</span> — trees agree strongly; higher confidence in the score.</p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0" />
+                  <p className="text-xs text-slate-400"><span className="text-slate-200">Wide band</span> — trees disagree; treat the score as an estimate and weight other signals accordingly.</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Formula: <span className="font-mono text-sky-300">lower = (p̄ − σ) × 100</span>, <span className="font-mono text-sky-300">upper = (p̄ + σ) × 100</span> where p̄ is the mean tree probability and σ is the standard deviation across estimators.
+              </p>
+            </div>
+          </section>
+
           {/* Risk factors */}
           <section>
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Risk Factors</p>

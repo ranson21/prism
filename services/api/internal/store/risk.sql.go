@@ -119,7 +119,9 @@ SELECT
     s.risk_score,
     s.risk_level,
     s.top_drivers,
-    s.score_date
+    s.score_date,
+    s.confidence_lower,
+    s.confidence_upper
 FROM risk.scores s
 JOIN geography.counties c USING (fips_code)
 JOIN risk.model_versions mv ON mv.id = s.model_version_id
@@ -139,6 +141,8 @@ type GetCountyScoreRow struct {
 	RiskLevel              string         `json:"risk_level"`
 	TopDrivers             []byte         `json:"top_drivers"`
 	ScoreDate              pgtype.Date    `json:"score_date"`
+	ConfidenceLower        pgtype.Numeric `json:"confidence_lower"`
+	ConfidenceUpper        pgtype.Numeric `json:"confidence_upper"`
 }
 
 func (q *Queries) GetCountyScore(ctx context.Context, fipsCode string) (GetCountyScoreRow, error) {
@@ -155,6 +159,8 @@ func (q *Queries) GetCountyScore(ctx context.Context, fipsCode string) (GetCount
 		&i.RiskLevel,
 		&i.TopDrivers,
 		&i.ScoreDate,
+		&i.ConfidenceLower,
+		&i.ConfidenceUpper,
 	)
 	return i, err
 }
