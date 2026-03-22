@@ -16,7 +16,7 @@ from app.models.events import CanonicalEvent
 
 log = logging.getLogger(__name__)
 
-_BASE = "https://www.fema.gov/api/open/v2/disasterDeclarationsSummaries"
+_BASE = "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries"
 _PAGE_SIZE = 1000
 
 
@@ -28,20 +28,21 @@ class FEMAConnector(BaseConnector):
         return "fema"
 
     async def fetch(self, since: datetime) -> list[CanonicalEvent]:
-        since_str = since.strftime("%Y-%m-%dT%H:%M:%S.000Z")
         events: list[CanonicalEvent] = []
         skip = 0
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             while True:
-                params = {
-                    "$filter": f"lastRefresh gt '{since_str}'",
-                    "$orderby": "lastRefresh asc",
-                    "$top": _PAGE_SIZE,
-                    "$skip": skip,
-                    "$format": "json",
-                }
-                resp = await client.get(_BASE, params=params)
+                # Avoid OData $filter — FEMA rejects it with 404.
+                # Fetch ordered by declarationDate desc, stop when records
+                # are older than `since`.
+                qs = (
+                    f"$orderby=declarationDate desc"
+                    f"&$top={_PAGE_SIZE}"
+                    f"&$skip={skip}"
+                    f"&$format=json"
+                )
+                resp = await client.get(f"{_BASE}?{qs}")
                 resp.raise_for_status()
 
                 payload = resp.json()
@@ -49,17 +50,28 @@ class FEMAConnector(BaseConnector):
                 if not records:
                     break
 
+                done = False
                 for rec in records:
+                    rec_date = self._parse_date(rec.get("declarationDate", ""))
+                    if rec_date and rec_date < since:
+                        done = True
+                        break
                     event = self._to_canonical(rec)
                     if event:
                         events.append(event)
 
-                if len(records) < _PAGE_SIZE:
+                if done or len(records) < _PAGE_SIZE:
                     break
                 skip += _PAGE_SIZE
 
-        log.info("FEMA fetched %d records since %s", len(events), since_str)
+        log.info("FEMA fetched %d records since %s", len(events), since.date())
         return events
+
+    def _parse_date(self, value: str) -> datetime | None:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return None
 
     def _to_canonical(self, rec: dict) -> CanonicalEvent | None:
         fips = fips_from_state_county(
@@ -70,14 +82,8 @@ class FEMAConnector(BaseConnector):
             rec.get("incidentType", ""),
             rec.get("declarationType", ""),
         )
-        try:
-            start = datetime.fromisoformat(rec["incidentBeginDate"].replace("Z", "+00:00"))
-        except (KeyError, ValueError, AttributeError):
-            start = None
-        try:
-            end = datetime.fromisoformat(rec["incidentEndDate"].replace("Z", "+00:00"))
-        except (KeyError, ValueError, AttributeError):
-            end = None
+        start = self._parse_date(rec.get("incidentBeginDate", ""))
+        end = self._parse_date(rec.get("incidentEndDate", ""))
 
         return CanonicalEvent(
             source_key="fema",

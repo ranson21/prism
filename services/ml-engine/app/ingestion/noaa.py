@@ -1,12 +1,16 @@
 """
-NOAA Storm Events connector — NCEI Climate Data Online (CDO) API v2.
+NWS (National Weather Service) Alerts connector.
 
-Docs: https://www.ncei.noaa.gov/cdo-web/api/v2/data
-Requires a free CDO token: https://www.ncdc.noaa.gov/cdo-web/token
+API: https://api.weather.gov/alerts
+- No API key required
+- Returns active and recent severe weather alerts
+- Includes county FIPS codes (UGC zones map to counties)
+
+Replaces the CDO connector — CDO does not expose a storm events dataset
+via its REST API; bulk storm event data requires file downloads.
 """
 
 import logging
-import os
 from datetime import datetime
 
 import httpx
@@ -17,94 +21,118 @@ from app.models.events import CanonicalEvent
 
 log = logging.getLogger(__name__)
 
-_BASE = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
-_DATASET = "GHCND"          # Global Historical Climatology Network Daily
-_PAGE_SIZE = 1000
+_BASE = "https://api.weather.gov/alerts"
+_PAGE_SIZE = 500
 
-# Storm Events dataset ID for NOAA CDO
-_STORM_DATASET = "STORM_EVENTS"
+# NWS event types that map to meaningful hazard signals for PRISM
+_SIGNIFICANT_EVENTS = {
+    "Tornado Warning", "Tornado Watch",
+    "Hurricane Warning", "Hurricane Watch",
+    "Tropical Storm Warning", "Tropical Storm Watch",
+    "Flash Flood Warning", "Flash Flood Watch",
+    "Flood Warning", "Flood Watch",
+    "Severe Thunderstorm Warning", "Severe Thunderstorm Watch",
+    "Blizzard Warning", "Ice Storm Warning",
+    "Winter Storm Warning", "Winter Storm Watch",
+    "Excessive Heat Warning", "Heat Advisory",
+    "Wildfire Warning", "Red Flag Warning",
+    "Tsunami Warning", "Tsunami Watch",
+}
 
 
 class NOAAConnector(BaseConnector):
     """
-    Fetches NOAA storm event records.
+    Fetches NWS weather alerts for the continental US.
 
-    Note: CDO API returns data per weather station. FIPS mapping is done
-    via the station's county FIPS attribute when available.
+    FIPS codes are extracted from the alert's geocode.SAME list,
+    which uses 6-digit SAME codes (leading zero + 5-digit FIPS).
     """
-
-    def __init__(self) -> None:
-        self._token = os.environ.get("NOAA_API_KEY", "")
 
     @property
     def source_key(self) -> str:
         return "noaa"
 
     async def fetch(self, since: datetime) -> list[CanonicalEvent]:
-        if not self._token:
-            log.warning("NOAA_API_KEY not set; skipping NOAA ingestion")
-            return []
-
-        headers = {"token": self._token}
         events: list[CanonicalEvent] = []
-        offset = 1  # CDO uses 1-based offset
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            while True:
-                params = {
-                    "datasetid": _STORM_DATASET,
-                    "startdate": since.strftime("%Y-%m-%d"),
-                    "enddate": datetime.utcnow().strftime("%Y-%m-%d"),
-                    "limit": _PAGE_SIZE,
-                    "offset": offset,
-                    "includemetadata": "false",
-                }
-                resp = await client.get(_BASE, params=params, headers=headers)
+        initial_params = {
+            "start": since.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "limit": _PAGE_SIZE,
+            "status": "actual",
+            "region_type": "land",
+        }
+
+        async with httpx.AsyncClient(
+            timeout=30.0,
+            headers={"User-Agent": "PRISM/0.1 (disaster-risk-platform)"},
+        ) as client:
+            url: str | None = str(httpx.URL(_BASE, params=initial_params))
+
+            while url:
+                # Follow the full next URL directly — re-adding the cursor as a
+                # param would double-encode it and cause a 400.
+                resp = await client.get(url)
                 resp.raise_for_status()
 
                 payload = resp.json()
-                records = payload.get("results", [])
-                if not records:
+                features = payload.get("features", [])
+                if not features:
                     break
 
-                for rec in records:
-                    event = self._to_canonical(rec)
-                    if event:
+                for feat in features:
+                    for event in self._to_canonical_per_county(feat):
                         events.append(event)
 
-                if len(records) < _PAGE_SIZE:
-                    break
-                offset += _PAGE_SIZE
+                url = payload.get("pagination", {}).get("next")
 
-        log.info("NOAA fetched %d records since %s", len(events), since.date())
+        log.info("NWS fetched %d alert-county records since %s", len(events), since.date())
         return events
 
-    def _to_canonical(self, rec: dict) -> CanonicalEvent | None:
-        # CDO returns station-level data; county FIPS may be embedded in station metadata
-        fips = rec.get("fipsCode") or rec.get("countyFips")
-        event_type_raw = rec.get("datatype", "")
-        magnitude = rec.get("value")
-        if magnitude is not None:
-            try:
-                magnitude = float(magnitude)
-            except (TypeError, ValueError):
-                magnitude = None
+    def _to_canonical_per_county(self, feat: dict) -> list[CanonicalEvent]:
+        """
+        One NWS alert can span multiple counties. Emit one CanonicalEvent
+        per county so each gets its own risk signal.
+        """
+        props = feat.get("properties", {})
+        event_type = props.get("event", "")
 
-        severity = severity_from_noaa_magnitude(magnitude, event_type_raw)
+        if event_type not in _SIGNIFICANT_EVENTS:
+            return []
+
+        # SAME geocodes are 6-digit strings: "0" + 5-digit FIPS
+        same_codes: list[str] = props.get("geocode", {}).get("SAME", [])
+        fips_list = [code[1:] for code in same_codes if len(code) == 6]
+        if not fips_list:
+            fips_list = [None]  # type: ignore[list-item]
+
+        severity = severity_from_noaa_magnitude(None, event_type)
 
         try:
-            start = datetime.fromisoformat(rec["date"].replace("Z", "+00:00"))
+            start = datetime.fromisoformat(
+                props["effective"].replace("Z", "+00:00")
+            )
         except (KeyError, ValueError, AttributeError):
             start = None
+        try:
+            end = datetime.fromisoformat(
+                props["expires"].replace("Z", "+00:00")
+            )
+        except (KeyError, ValueError, AttributeError):
+            end = None
 
-        return CanonicalEvent(
-            source_key="noaa",
-            external_id=f"{rec.get('station', '')}:{rec.get('date', '')}:{event_type_raw}",
-            fips_code=fips,
-            event_type="weather",
-            event_subtype=event_type_raw,
-            severity=severity,
-            event_start=start,
-            event_end=None,
-            raw_data=rec,
-        )
+        alert_id = feat.get("id", "")
+
+        return [
+            CanonicalEvent(
+                source_key="noaa",
+                external_id=f"{alert_id}:{fips or 'unknown'}",
+                fips_code=fips,
+                event_type="weather",
+                event_subtype=event_type,
+                severity=severity,
+                event_start=start,
+                event_end=end,
+                raw_data=props,
+            )
+            for fips in fips_list
+        ]

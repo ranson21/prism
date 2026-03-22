@@ -12,11 +12,11 @@ Responsibilities:
 import logging
 from datetime import datetime, timedelta, timezone
 
-import json
-
 import psycopg
+from psycopg.types.json import Jsonb
 
 from app.db import get_conn
+from app.geography.seed_counties import get_valid_fips
 from app.ingestion.base import BaseConnector
 from app.ingestion.fema import FEMAConnector
 from app.ingestion.noaa import NOAAConnector
@@ -81,6 +81,12 @@ async def _run_connector(connector: BaseConnector, since: datetime) -> Ingestion
         fetched = len(events)
 
         async with get_conn() as conn:
+            valid_fips = await get_valid_fips(conn)
+            # Null out FIPS codes not present in geography.counties to avoid FK violations.
+            # Unresolvable codes are preserved in raw_data for later enrichment.
+            for event in events:
+                if event.fips_code and event.fips_code not in valid_fips:
+                    event.fips_code = None
             inserted, skipped = await _write_events(conn, events, run_id)
 
     except Exception as exc:
@@ -106,7 +112,7 @@ async def _open_run(conn: psycopg.AsyncConnection, source_key: str, since: datet
         VALUES (%s, %s)
         RETURNING id
         """,
-        (source_key, {"since": since.isoformat()}),
+        (source_key, Jsonb({"since": since.isoformat()})),
     )
     result = await row.fetchone()
     await conn.commit()
@@ -132,7 +138,7 @@ async def _write_events(
             VALUES
                 (%(source_key)s, %(external_id)s, %(fips_code)s, %(event_type)s,
                  %(event_subtype)s, %(severity)s, %(event_start)s, %(event_end)s,
-                 %(raw_data)s::jsonb, %(run_id)s)
+                 %(raw_data)s, %(run_id)s)
             ON CONFLICT (source_key, external_id) DO NOTHING
             """,
             {
@@ -144,7 +150,7 @@ async def _write_events(
                 "severity": event.severity,
                 "event_start": event.event_start,
                 "event_end": event.event_end,
-                "raw_data": json.dumps(event.raw_data),
+                "raw_data": Jsonb(event.raw_data),
                 "run_id": run_id,
             },
         )
