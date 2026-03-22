@@ -57,10 +57,10 @@ _Ensures the demo is end-to-end functional and compelling._
 ## Documentation & Methodology
 _Required artifacts for judging on Technical Soundness and Explainability._
 
-- [ ] **README** — setup instructions, architecture summary, demo script, data sources cited
-- [ ] **Architecture diagram** — service boundaries (React → Go API → ML Engine → PostgreSQL), data flow, and ingestion sources (FEMA, NWS, USGS, Census); include in `docs/architecture.md` or as a diagram image
-- [ ] **Risk scoring methodology doc** — document feature engineering logic, model choice (random forest), confidence band derivation, and risk level thresholds; add to `docs/ml_pipeline.md`
-- [ ] **Responsible AI section** — document data sources and limitations, uncertainty communication (confidence bands), avoidance of deterministic claims, bias/equity considerations (economic exposure proxy), and model update cadence; add to `docs/responsible_ai.md`
+- [x] **README** — setup instructions, architecture summary, demo script, data sources cited
+- [x] **Architecture diagram** — 3-tier network diagram (Mermaid) with government cloud deployment path, FedRAMP control mapping, and data flow; in `docs/architecture.md`
+- [x] **Risk scoring methodology doc** — feature engineering, composite index + K-Means methodology, confidence band derivation, risk thresholds, why-not-classifier rationale; in `docs/ml_pipeline.md`
+- [x] **Responsible AI section** — data sources and limitations, uncertainty communication, non-deterministic framing, equity-aware modeling, model auditability, human-in-the-loop requirement; in `docs/responsible_ai.md`
 
 ---
 

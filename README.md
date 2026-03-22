@@ -1,270 +1,165 @@
-# PRISM
-## Prioritization of Risk & Incident Support Model
+# PRISM — Prioritization of Risk & Incident Support Model
 
-**PRISM** is an AI-powered disaster risk intelligence platform that helps emergency planners prioritize limited response resources using explainable, data-driven insights.
+An AI-powered disaster risk intelligence platform that helps emergency planners prioritize limited resources using explainable, continuously updated county-level risk scores derived from public hazard data.
 
-> **PRISM — Prioritizing Risk for Intelligent Support & Mobilization**
-
----
-
-## 🚨 Problem
-
-Emergency agencies such as FEMA, NOAA, and USGS manage vast amounts of disaster and hazard data, but face a critical challenge:
-
-> **How do we prioritize limited resources before and during disasters based on predictive risk signals?**
-
-Current approaches often:
-- rely on fragmented datasets
-- lack standardized risk scoring
-- provide limited explainability
-- make proactive resource allocation difficult
+> "Where should we act right now, and why?"
 
 ---
 
-## 🎯 Solution
+## What PRISM Does
 
-PRISM transforms public disaster, weather, and demographic data into:
+PRISM ingests public data from FEMA, NWS, USGS, and the US Census Bureau and produces:
 
-- **County-level disaster risk scores**
-- **Ranked priority regions**
-- **Explainable risk drivers**
-- **Scenario-based resource allocation insights**
-- **Operational decision-support dashboards**
+- **0–100 risk scores** for all 3,200+ US counties, updated on demand
+- **Ranked county list** sorted by risk level with top risk drivers per county
+- **Explainability panel** showing exactly which factors are driving each score
+- **K-Means risk tiers** (Tier 1 — Minimal Activity through Tier 5 — High-Risk Composite)
+- **Confidence bands** communicating uncertainty in each score
+- **Scenario simulator** to model hypothetical disaster events and pre-position resources
 
-PRISM is not designed to predict disasters with certainty.
-
-It is designed to:
-> **Make disaster risk measurable, transparent, and actionable for planners.**
+PRISM is a decision-support tool, not a deterministic predictor. Outputs are probabilistic estimates to inform — not replace — domain expertise.
 
 ---
 
-## 🧠 AI Approach
-
-PRISM uses machine learning to forecast near-term disaster risk and simulate resource allocation strategies.
-
-### 🔍 Risk Prediction
-- Model: Random Forest (baseline)
-- Predicts: **county-level risk over 24–72 hours**
-- Outputs:
-  - `risk_score` (0–100)
-  - `risk_level` (low → critical)
-  - `confidence_band`
-
-### 📊 Feature Inputs
-- Historical disaster frequency (FEMA)
-- Weather signals (NOAA)
-- Geological hazards (USGS)
-- Population exposure (Census)
-- Severity and economic impact proxies
-
-### 🔎 Explainability
-PRISM emphasizes **transparent AI**:
-- Feature importance per prediction
-- Top risk drivers surfaced to users
-- Clear assumptions and limitations
-
----
-
-## ⚙️ Resource Prioritization Engine
-
-PRISM converts risk into action.
-
-### 📌 Capabilities
-- Rank regions by composite risk
-- Identify **top priority counties**
-- Highlight **resource gaps**
-- Recommend **pre-positioning strategies**
-
-### 🔁 Scenario Simulation
-PRISM supports “what-if” planning:
-- Deploy resources to County A vs County B
-- Compare expected risk reduction
-- Evaluate constrained resource allocation
-
----
-
-## 🗺️ Dashboard
-
-PRISM provides a mission-focused operational dashboard:
-
-### Key Views
-- 🗺️ County-level heat map
-- 📊 Risk ranking table
-- 🧠 Explainability panel (risk drivers)
-- 🚚 Resource allocation view
-- 🔁 Scenario comparison mode
-- 📈 Historical vs predicted comparison
-
----
-
-## 🏗️ Architecture
+## Architecture
 
 ```
-[ React Frontend ]
-        ↓
-   [ Go API Layer ]
-        ↓
-[ Python ML Service ]
-        ↓
-   [ Public Datasets ]
+[ React Dashboard (Vite + Tailwind) ]
+              ↓  HTTP / REST
+      [ Go API (Gin) — port 8080 ]
+              ↓  pgx
+         [ PostgreSQL ]
+              ↑  psycopg3
+  [ Python ML Engine (FastAPI) — port 8001 ]
+              ↑
+  FEMA OpenFEMA · NWS API · USGS Earthquake Catalog · US Census ACS
 ```
 
----
-
-## 📊 Data Sources
-
-PRISM uses only **public datasets**:
-
-- FEMA OpenFEMA
-- NOAA / NCEI
-- USGS
-- U.S. Census (optional)
+| Service | Language | Role |
+|---|---|---|
+| `apps/ui` | React + TypeScript | Dashboard, map heatmap, scenario UI |
+| `services/api` | Go (Gin) | REST API, query orchestration, rankings |
+| `services/ml-engine` | Python (FastAPI) | Data ingestion, feature engineering, scoring |
+| `environments/local` | Docker Compose | Local orchestration, PostgreSQL, migrations |
 
 ---
 
-## 🔐 Security Model
+## Data Sources
 
-- JWT-based authentication
-- Role-based access control (RBAC)
+| Dataset | Source | Used For |
+|---|---|---|
+| Disaster declarations | [FEMA OpenFEMA API](https://www.fema.gov/about/openfema/api) | Disaster counts, major disaster flags |
+| Severe weather alerts | [NWS API](https://api.weather.gov) | Alert counts weighted by severity |
+| Earthquake events | [USGS Earthquake Catalog](https://earthquake.usgs.gov/fdsnws/event/1/) | Earthquake count, max magnitude |
+| Population & income | [US Census Bureau ACS](https://www.census.gov/data/developers/data-sets/acs-1year.html) | Population exposure, income vulnerability |
 
----
-
-## 📦 API Overview
-
-Example endpoints:
-
-```
-GET  /risk/summary
-GET  /risk/rankings
-GET  /risk/explain
-POST /scenarios/simulate
-GET  /resources
-POST /auth/login
-```
+All data is public and free to access. No proprietary feeds are required.
 
 ---
-## 🚀 Local Development
 
-PRISM uses modern, language-appropriate tooling for local development:
+## Quick Start (Docker)
 
-- Python ML service uses Poetry for dependency management and virtual environments
-- Go API uses standard Go modules
-- Frontend uses npm
-- Makefile provides the primary entry point for common developer workflows
-
-The repository should prefer documented `make` commands over ad hoc per-service shell commands so local development stays consistent across contributors.
-
-### Prerequisites
-
-Install the following tools before starting:
-
-- Python 3.11+
-- Poetry
-- Go 1.22+
-- Node.js 20+
-- make
-
-### First-Time Setup
-
-Bootstrap all local dependencies:
+Prerequisites: Docker Desktop or Docker Engine + `make`.
 
 ```bash
+# 1. Clone and enter the repo
+git clone <repo-url> && cd prism
+
+# 2. Start all services (builds images if needed)
+make docker-up
+
+# 3. Open the dashboard
+open http://localhost:3000
+
+# 4. (Optional) Trigger a fresh data run
+make ingest    # pull latest FEMA/NWS/USGS events
+make features  # compute county feature vectors
+make train     # fit the risk index model
+make score     # score all 3,220 counties
+```
+
+The database is seeded with county geography and demo scenario definitions automatically on first `docker-up`. Historical scores for the past 6 months are seeded via `make seed-history`.
+
+---
+
+## Local Development (without Docker)
+
+Prerequisites: Python 3.11+, Poetry, Go 1.22+, Node.js 20+, PostgreSQL.
+
+```bash
+# Install all dependencies
 make bootstrap
+
+# Start each service in a separate terminal
+make dev-api   # Go API on :8080
+make dev-ml    # Python ML engine on :8001
+make dev-web   # React UI on :5173
 ```
 
-### Start the Full Local Development Environment
-
-```bash
-make dev
-```
-
-This should start the core local services for development:
-
-- the React frontend
-- the Go API
-- the Python ML service
-
-### Run Individual Services
-
-Start only the ML service:
-
-```bash
-make dev-ml
-```
-
-Start only the Go API:
-
-```bash
-make dev-api
-```
-
-Start only the frontend:
-
-```bash
-make dev-web
-```
-
-### Testing
-
-Run all tests:
-
-```bash
-make test
-```
-
-Run service-specific tests:
-
-```bash
-make test-api
-make test-ml
-make test-web
-```
-
-### Formatting
-
-Format all code:
-
-```bash
-make fmt
-```
-
-### Linting
-
-Run all linters:
-
-```bash
-make lint
-```
-
-### Environment Configuration
-
-Use `.env.example` files to document required environment variables for each service.
-
-Recommended pattern:
-
-- backend/api/.env.example
-- backend/ml-service/.env.example
-- frontend/.env.example
-
-Copy these into `.env` files locally and update values as needed.
----
-
-## ⚖️ Responsible AI
-
-- Explainable outputs
-- Transparent assumptions
-- No overconfident predictions
-- Human-in-the-loop decision support
+Copy `environments/local/.env.example` to `environments/local/.env` and set `DATABASE_URL` before starting.
 
 ---
 
-## 🎥 Demo Narrative
+## Key API Endpoints
 
-“PRISM uses public disaster, weather, and population data to forecast county-level risk over the next 72 hours.  
-It then ranks regions by priority and simulates resource allocation strategies to help emergency planners make faster, more informed decisions.”
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/risk/summary` | Distribution of risk levels + top 5 counties |
+| `GET` | `/risk/rankings` | All counties ranked by risk score (paginated) |
+| `GET` | `/risk/explain/:fips` | Full score breakdown for one county |
+| `GET` | `/risk/history/:fips` | 90-day score history for one county |
+| `POST` | `/scenarios/simulate` | Apply severity multiplier + resource allocation |
 
 ---
 
-## 👥 Team
+## Demo Script
 
-Sky Solutions LLC
+1. **Open the dashboard** — the map loads with all 3,220 counties colored by risk level (green → yellow → orange → red).
+2. **Click a high-risk county** (red/orange on the map) — the Explain panel opens showing the risk score, confidence band, top risk drivers chart, and K-Means tier.
+3. **Switch to History tab** — see the 6-month score trend for that county.
+4. **Open the Scenario Simulator** — select "Category 5 Hurricane", set Resource Units to 50, click Run. The results show which counties' risk spikes, which 50 get resources deployed, and which have unmet need.
+5. **Click "About / Agency Pilot"** in the header — explains the methodology, scoring approach, and path to agency adoption.
+
+---
+
+## Methodology Summary
+
+See [`docs/ml_pipeline.md`](docs/ml_pipeline.md) for full detail. In brief:
+
+- Features are normalized to [0, 1] via MinMaxScaler and combined with expert-calibrated weights (FEMA NRI methodology).
+- Scores are rank-normalized to a right-skewed 0–100 distribution.
+- K-Means (k=5) clusters counties into risk tiers based on their full feature profile.
+- A supervised classifier was evaluated but FEMA major disaster declarations in a 90-day window yield near-zero positive labels, making probability calibration unreliable.
+
+---
+
+## Responsible AI
+
+See [`docs/responsible_ai.md`](docs/responsible_ai.md) for full detail.
+
+- **Public data only** — no proprietary or real-time emergency feeds
+- **Uncertainty shown** — every score includes a confidence band
+- **Explainable** — top drivers surface which factors drove each score
+- **Not deterministic** — scores are relative risk estimates, not predictions of specific events
+- **Equity-aware** — income vulnerability is modeled as a risk amplifier, not excluded
+
+---
+
+## Project Structure
+
+```
+prism/
+├── apps/
+│   └── ui/                  # React dashboard
+├── services/
+│   ├── api/                 # Go REST API
+│   └── ml-engine/           # Python ingestion + ML
+├── environments/
+│   └── local/               # Docker Compose + migrations
+├── docs/                    # Architecture, ML pipeline, responsible AI
+└── Makefile                 # Primary developer entrypoint
+```
+
+---
+
+Built by Sky Solutions LLC
