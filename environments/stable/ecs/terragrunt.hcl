@@ -82,6 +82,7 @@ inputs = {
     api = {
       cpu    = local.env.api_cpu
       memory = local.env.api_memory
+      enable_execute_command = true
 
       container_definitions = {
         api = {
@@ -112,6 +113,7 @@ inputs = {
     ml-engine = {
       cpu    = local.env.ml_cpu
       memory = local.env.ml_memory
+      enable_execute_command = true
 
       container_definitions = {
         ml-engine = {

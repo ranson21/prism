@@ -250,8 +250,10 @@ ecr-push-dev: ecr-login
 	$(eval ACCOUNT_ID=$(shell aws sts get-caller-identity --query Account --output text))
 	$(eval REGION ?= us-east-1)
 	$(eval ENV=dev)
+	cp -r environments/local/migrations services/ml-engine/migrations
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest       ./services/api
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest ./services/ml-engine
+	rm -rf services/ml-engine/migrations
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest
 
@@ -259,8 +261,10 @@ ecr-push-test: ecr-login
 	$(eval ACCOUNT_ID=$(shell aws sts get-caller-identity --query Account --output text))
 	$(eval REGION ?= us-east-1)
 	$(eval ENV=test)
+	cp -r environments/local/migrations services/ml-engine/migrations
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest       ./services/api
 	docker build -t $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest ./services/ml-engine
+	rm -rf services/ml-engine/migrations
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-api:latest
 	docker push $(ACCOUNT_ID).dkr.ecr.$(REGION).amazonaws.com/prism-$(ENV)-ml-engine:latest
 
@@ -282,8 +286,12 @@ deploy-static-dev:
 	aws s3 sync apps/site/dist/ s3://$(BUCKET)/ --delete --region $(REGION)
 	@echo "→ Uploading UI to s3://$(BUCKET)/app/..."
 	aws s3 sync apps/ui/dist/  s3://$(BUCKET)/app/ --delete --region $(REGION)
-	@echo "→ Invalidating CloudFront cache..."
-	aws cloudfront create-invalidation --distribution-id $(CF_ID) --paths "/*" --region $(REGION)
+	@if [ -n "$(CF_ID)" ]; then \
+	  echo "→ Invalidating CloudFront cache..."; \
+	  aws cloudfront create-invalidation --distribution-id $(CF_ID) --paths "/*" --region $(REGION); \
+	else \
+	  echo "→ Skipping invalidation (CloudFront not yet deployed)"; \
+	fi
 	@echo "✓ Static deploy complete"
 
 deploy-static-test:
@@ -299,34 +307,27 @@ deploy-static-test:
 	aws s3 sync apps/site/dist/ s3://$(BUCKET)/ --delete --region $(REGION)
 	@echo "→ Uploading UI to s3://$(BUCKET)/app/..."
 	aws s3 sync apps/ui/dist/  s3://$(BUCKET)/app/ --delete --region $(REGION)
-	@echo "→ Invalidating CloudFront cache..."
-	aws cloudfront create-invalidation --distribution-id $(CF_ID) --paths "/*" --region $(REGION)
+	@if [ -n "$(CF_ID)" ]; then \
+	  echo "→ Invalidating CloudFront cache..."; \
+	  aws cloudfront create-invalidation --distribution-id $(CF_ID) --paths "/*" --region $(REGION); \
+	else \
+	  echo "→ Skipping invalidation (CloudFront not yet deployed)"; \
+	fi
 	@echo "✓ Static deploy complete"
 
 # ── Seeding & data pipeline ───────────────────────────────────────────────────
 
-# Run SQL migrations directly against RDS.
-# Temporarily opens port 5432 from your local IP, runs psql, then closes it.
-# RDS manages the DB password in Secrets Manager — fetched here via terragrunt output.
+# Run SQL migrations via ECS Exec into the ml-engine task (stays inside the VPC — no public DB access).
+# Requires: ECS stack deployed with execute_command enabled, ml-engine task running.
 aws-db-migrate:
-	$(eval ENV        ?= dev)
-	$(eval REGION     ?= us-east-1)
-	$(eval RDS_HOST    = $(shell cd environments/$(ENV)/rds && terragrunt output -raw db_instance_address --terragrunt-non-interactive 2>/dev/null))
-	$(eval RDS_SG      = $(shell cd environments/$(ENV)/sg  && terragrunt output -raw rds_sg_id --terragrunt-non-interactive 2>/dev/null))
-	$(eval SECRET_ARN  = $(shell cd environments/$(ENV)/rds && terragrunt output -raw db_instance_master_user_secret_arn --terragrunt-non-interactive 2>/dev/null))
-	$(eval MY_IP       = $(shell curl -s https://checkip.amazonaws.com))
-	$(eval DB_PASS     = $(shell aws secretsmanager get-secret-value --secret-id "$(SECRET_ARN)" --query SecretString --output text --region $(REGION) | python3 -c "import sys,json; print(json.load(sys.stdin)['password'])"))
-	@echo "→ Opening RDS to $(MY_IP)/32 temporarily..."
-	aws ec2 authorize-security-group-ingress \
-	  --group-id $(RDS_SG) --protocol tcp --port 5432 --cidr $(MY_IP)/32 --region $(REGION)
-	@echo "→ Running migrations..."
-	for f in $$(ls environments/local/migrations/*.sql | sort); do \
-	  echo "  $$f"; \
-	  PGPASSWORD=$(DB_PASS) psql -h $(RDS_HOST) -U prism -d prism -f $$f; \
-	done
-	@echo "→ Closing temporary SG rule..."
-	aws ec2 revoke-security-group-ingress \
-	  --group-id $(RDS_SG) --protocol tcp --port 5432 --cidr $(MY_IP)/32 --region $(REGION)
+	$(eval ENV    ?= dev)
+	$(eval REGION ?= us-east-1)
+	$(eval CLUSTER = prism-$(ENV))
+	$(eval TASK_ARN = $(shell aws ecs list-tasks --cluster $(CLUSTER) --service-name ml-engine \
+	  --query 'taskArns[0]' --output text --region $(REGION) 2>/dev/null))
+	@echo "→ Running migrations via ECS Exec (task: $(TASK_ARN))..."
+	aws ecs execute-command --cluster $(CLUSTER) --task $(TASK_ARN) --container ml-engine \
+	  --command "python -m app.migrate" --interactive --region $(REGION)
 	@echo "✓ Migrations complete"
 
 # Seed counties and run the full ML pipeline via ECS Exec into the ml-engine task.
