@@ -13,6 +13,8 @@ const FACTOR_LABEL: Record<string, string> = {
   earthquake_count:          'Earthquakes',
   max_earthquake_magnitude:  'Max Magnitude',
   disaster_count:            'Disasters',
+  log_population:            'Population Scale',
+  income_vulnerability:      'Income Vulnerability',
 }
 
 type PanelTab = 'drivers' | 'history'
