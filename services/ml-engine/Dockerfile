@@ -12,8 +12,9 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false \
     && poetry install --only main --no-root --no-interaction --no-ansi
 
-# Copy application code
+# Copy application code and bundled migrations
 COPY app/ ./app/
+COPY migrations/ ./migrations/
 
 # Artifacts mounted as a volume at runtime
 RUN mkdir -p artifacts
