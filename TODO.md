@@ -79,6 +79,19 @@ _Site currently has no in-app narrative for agency adoption or visible responsib
 
 ---
 
+
+## Additional Features
+
+- [ ] Let users lasso parts of the map to select counties to generate simulations against
+- [ ] Add  a dropdown to allow users to change the view from the default of county view to state and region (NE, NW, SE, etc.)
+- [ ] Add a toggle to display or hide U.S. territories
+- [ ] Add the ability to simulate multiple disasters on different counties as part of a scenario
+- [ ] Add the ability to save simulations
+- [ ] Make the risk levels at the top filter options so we can display onlt criticals, elevetated etc.
+- [ ] Add filter dropdown to risk rankings to toggle the number and types of rankings shown
+
+--- 
+
 ## Judging Criteria Alignment Checklist
 _Verify each criterion is demonstrably addressed before submission._
 
@@ -106,3 +119,21 @@ _Post-hackathon architecture decisions to note now so MVP design supports them._
 - [ ] Note **multi-hazard fusion engine** — current multi-source feature engineering is the seed of this
 - [ ] Note **predictive seasonal outlook modeling** — extend scoring to forward-looking time horizons
 - [ ] Note **secure cloud deployment** path (containerized services → Kubernetes / managed cloud)
+
+---
+
+## ML Requirements Gap
+_Must satisfy judging requirement: "Uses statistical or ML methods (logistic regression, gradient boosting, random forest)"._
+_Dropping the random forest left us with a weighted composite index — valid statistically, but not one of the listed ML methods._
+
+- [x] **K-Means clustering layer** — add unsupervised K-Means (sklearn) to the scoring pipeline; cluster all 3,220 counties by their normalized feature profile into K=5 risk tiers; use cluster assignment + distance from the highest-risk centroid as a ML-derived signal; store `cluster_id` per score row; surface "Risk Cluster" in the explain panel — satisfies the ML requirement with an algorithm genuinely appropriate for unlabeled hazard data
+- [ ] **Update methodology doc** — update `docs/ml_pipeline.md` to reflect the Explainable Risk Index + K-Means approach; document why supervised classification was inappropriate (FEMA labels are lagging indicators, 90-day window yields ~0 positives) and why clustering fits unsupervised risk profiling
+
+---
+
+## Prioritization Framework Gap
+_Must satisfy judging requirement: "Simulates pre-positioning of limited resources"._
+_Current scenario simulator models risk change but does not allocate resources or show coverage gaps._
+
+- [ ] **Resource pre-positioning model** — extend `POST /scenarios/simulate` to accept an optional `resource_units` parameter; apply greedy allocation (highest delta-risk counties first, capacity-constrained); return `allocated_resources` and `unmet_need` per county in the response
+- [ ] **Resource allocation UI** — add a "Resource Units" input to ScenarioPanel (slider, e.g. 10–500 units); show allocated vs unmet need in the simulation results table; highlight counties that received allocation in a distinct color on the scenario map

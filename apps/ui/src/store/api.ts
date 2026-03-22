@@ -54,6 +54,8 @@ export interface CountyDetail extends RankedCounty {
   median_household_income: number | null
   confidence_lower: number
   confidence_upper: number
+  cluster_id: number | null
+  cluster_label: string | null
   features: CountyFeatures
 }
 
@@ -72,6 +74,7 @@ export interface SimulateRequest {
   description?: string
   severity_multiplier: number
   fips_codes?: string[]
+  resource_units?: number
 }
 
 export interface SimResult {
@@ -82,6 +85,8 @@ export interface SimResult {
   simulated_risk_score: number
   simulated_risk_level: 'low' | 'moderate' | 'elevated' | 'critical'
   delta_from_baseline: number
+  allocated_resources: number
+  unmet_need: boolean
 }
 
 export interface SimulateResponse {
@@ -89,6 +94,9 @@ export interface SimulateResponse {
   name: string
   results: SimResult[]
   total: number
+  resource_units: number
+  total_allocated: number
+  total_unmet: number
 }
 
 export const prismApi = createApi({

@@ -55,8 +55,8 @@ func (h *Handler) summary(c *gin.Context) {
 func (h *Handler) rankings(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	if limit > 500 {
-		limit = 500
+	if limit > 5000 {
+		limit = 5000
 	}
 
 	total, err := h.q.CountRankings(c.Request.Context())
@@ -111,6 +111,8 @@ func (h *Handler) explain(c *gin.Context) {
 		"risk_level":              score.RiskLevel,
 		"confidence_lower":        numericToFloat(score.ConfidenceLower),
 		"confidence_upper":        numericToFloat(score.ConfidenceUpper),
+		"cluster_id":              score.ClusterID,
+		"cluster_label":           score.ClusterLabel,
 		"top_drivers":             drivers,
 		"score_date":              score.ScoreDate.Time.Format("2006-01-02"),
 		"features": gin.H{

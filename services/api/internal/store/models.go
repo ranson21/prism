@@ -66,17 +66,18 @@ type DatasetsSource struct {
 }
 
 type GeographyCounty struct {
-	FipsCode   string             `json:"fips_code"`
-	CountyName string             `json:"county_name"`
-	StateFips  string             `json:"state_fips"`
-	StateName  string             `json:"state_name"`
-	StateAbbr  string             `json:"state_abbr"`
-	Population *int32             `json:"population"`
-	AreaSqKm   pgtype.Numeric     `json:"area_sq_km"`
-	Lat        pgtype.Numeric     `json:"lat"`
-	Lon        pgtype.Numeric     `json:"lon"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	FipsCode              string             `json:"fips_code"`
+	CountyName            string             `json:"county_name"`
+	StateFips             string             `json:"state_fips"`
+	StateName             string             `json:"state_name"`
+	StateAbbr             string             `json:"state_abbr"`
+	Population            *int32             `json:"population"`
+	AreaSqKm              pgtype.Numeric     `json:"area_sq_km"`
+	Lat                   pgtype.Numeric     `json:"lat"`
+	Lon                   pgtype.Numeric     `json:"lon"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+	MedianHouseholdIncome *int32             `json:"median_household_income"`
 }
 
 type PrioritizationRanking struct {
@@ -110,6 +111,9 @@ type RiskCountyFeature struct {
 	HazardFrequencyScore   pgtype.Numeric     `json:"hazard_frequency_score"`
 	Features               []byte             `json:"features"`
 	ComputedAt             pgtype.Timestamptz `json:"computed_at"`
+	EconomicExposure       pgtype.Numeric     `json:"economic_exposure"`
+	LogPopulation          pgtype.Numeric     `json:"log_population"`
+	IncomeVulnerability    pgtype.Numeric     `json:"income_vulnerability"`
 }
 
 type RiskModelVersion struct {
@@ -136,6 +140,8 @@ type RiskScore struct {
 	ConfidenceUpper pgtype.Numeric     `json:"confidence_upper"`
 	TopDrivers      []byte             `json:"top_drivers"`
 	ComputedAt      pgtype.Timestamptz `json:"computed_at"`
+	ClusterID       *int16             `json:"cluster_id"`
+	ClusterLabel    *string            `json:"cluster_label"`
 }
 
 type ScenariosDefinition struct {
