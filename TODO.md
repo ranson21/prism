@@ -96,12 +96,12 @@ _Site currently has no in-app narrative for agency adoption or visible responsib
 ## Judging Criteria Alignment Checklist
 _Verify each criterion is demonstrably addressed before submission._
 
-- [ ] **Mission Relevance (High)** — demo shows improved disaster preparedness + proactive resource prioritization using real public data
-- [ ] **Technical Soundness (High)** — architecture diagram reviewed, ML pipeline documented, API contracts match spec, all services run via Docker Compose
-- [ ] **Explainability & Responsible AI (High)** — top_drivers visible in UI, confidence bands shown, responsible AI doc complete, no deterministic claims in UI copy
-- [ ] **Feasibility for Agency Adoption (High)** — agency pilot briefing covers integration path, data source provenance documented, cloud-native architecture noted
-- [ ] **Innovation (Medium)** — scenario simulation and geo-aware defaults highlighted in demo
-- [ ] **Demo Clarity (Medium)** — demo script rehearsed, ranked table leads with highest-risk counties, explain panel tells a clear story
+- [x] **Mission Relevance (High)** — resource pre-positioning with DEPLOYED/UNMET allocation model, real public data (FEMA/NWS/USGS/Census), proactive county risk ranking for all 3,220 counties
+- [x] **Technical Soundness (High)** — Mermaid 3-tier architecture diagram, K-Means + confidence band ML pipeline doc, all 5 services in Docker Compose, all API endpoints match spec (GET /risk/summary|rankings|explain|history, POST /scenarios/simulate)
+- [x] **Explainability & Responsible AI (High)** — top_drivers bar chart + confidence band in ExplainPanel, ResponsibleAIBanner with "Not Deterministic" pillar, docs/responsible_ai.md complete, zero banned phrases ("will happen", "guarantee") found in UI or site copy
+- [x] **Feasibility for Agency Adoption (High)** — Phase 1/2 roadmap in agency_pilot_brief.md, FedRAMP control mapping + GovCloud deployment path in architecture.md, data source provenance and limitations documented
+- [x] **Innovation (Medium)** — scenario simulator with greedy resource pre-positioning (unique to risk tools), browser geolocation auto-selects user's home county, K-Means risk tiers as peer-group benchmarking layer
+- [x] **Demo Clarity (Medium)** — 5-scene demo script with URLs + talking points, ExplainPanel shows score/confidence/drivers/tier/history, rankings sorted by risk_score DESC, clear site → dashboard → explain → scenario → roadmap narrative arc
 
 ---
 
@@ -128,7 +128,7 @@ _Must satisfy judging requirement: "Uses statistical or ML methods (logistic reg
 _Dropping the random forest left us with a weighted composite index — valid statistically, but not one of the listed ML methods._
 
 - [x] **K-Means clustering layer** — add unsupervised K-Means (sklearn) to the scoring pipeline; cluster all 3,220 counties by their normalized feature profile into K=5 risk tiers; use cluster assignment + distance from the highest-risk centroid as a ML-derived signal; store `cluster_id` per score row; surface "Risk Cluster" in the explain panel — satisfies the ML requirement with an algorithm genuinely appropriate for unlabeled hazard data
-- [ ] **Update methodology doc** — update `docs/ml_pipeline.md` to reflect the Explainable Risk Index + K-Means approach; document why supervised classification was inappropriate (FEMA labels are lagging indicators, 90-day window yields ~0 positives) and why clustering fits unsupervised risk profiling
+- [x] **Update methodology doc** — `docs/ml_pipeline.md` fully rewritten: covers Explainable Risk Index + K-Means approach, "Why Not a Classifier?" section documents label sparsity (FEMA declarations lag, <1% positive rate in 90-day window), and why clustering fits unsupervised risk profiling
 
 ---
 
@@ -136,5 +136,5 @@ _Dropping the random forest left us with a weighted composite index — valid st
 _Must satisfy judging requirement: "Simulates pre-positioning of limited resources"._
 _Current scenario simulator models risk change but does not allocate resources or show coverage gaps._
 
-- [ ] **Resource pre-positioning model** — extend `POST /scenarios/simulate` to accept an optional `resource_units` parameter; apply greedy allocation (highest delta-risk counties first, capacity-constrained); return `allocated_resources` and `unmet_need` per county in the response
-- [ ] **Resource allocation UI** — add a "Resource Units" input to ScenarioPanel (slider, e.g. 10–500 units); show allocated vs unmet need in the simulation results table; highlight counties that received allocation in a distinct color on the scenario map
+- [x] **Resource pre-positioning model** — `POST /scenarios/simulate` accepts `resource_units`; greedy allocation (highest delta-risk first, capped at 500); returns `allocated_resources`, `unmet_need` per county, plus `total_allocated` and `total_unmet` in response
+- [x] **Resource allocation UI** — Resource Units slider (0–500) in ScenarioPanel; DEPLOYED badge (green) on allocated counties, UNMET badge (amber) on coverage gaps; allocation summary (X allocated / Y unmet) shown in results header
