@@ -11,10 +11,10 @@ const PRESETS = [
 ]
 
 interface Props {
-  onClose: () => void
+  onResults: (results: SimResult[] | null) => void
 }
 
-export function ScenarioPanel({ onClose }: Props) {
+export function ScenarioPanel({ onResults }: Props) {
   const [simulate, { isLoading, data, reset }] = useSimulateMutation()
   const [multiplier, setMultiplier] = useState(2.0)
   const [scenarioName, setScenarioName] = useState('Custom Scenario')
@@ -25,7 +25,13 @@ export function ScenarioPanel({ onClose }: Props) {
   }
 
   async function run() {
-    await simulate({ name: scenarioName, severity_multiplier: multiplier })
+    const result = await simulate({ name: scenarioName, severity_multiplier: multiplier })
+    if ('data' in result && result.data) onResults(result.data.results)
+  }
+
+  function clear() {
+    reset()
+    onResults(null)
   }
 
   return (
@@ -36,13 +42,6 @@ export function ScenarioPanel({ onClose }: Props) {
           <h2 className="text-base font-semibold text-slate-100">Scenario Simulator</h2>
           <p className="text-xs text-slate-400 mt-0.5">Apply severity multipliers and compare against baseline</p>
         </div>
-        <button
-          onClick={onClose}
-          className="text-slate-500 hover:text-slate-300 text-lg leading-none px-1"
-          aria-label="Close"
-        >
-          ×
-        </button>
       </div>
 
       <div className="px-4 py-4 border-b border-white/10 space-y-4">
@@ -108,7 +107,7 @@ export function ScenarioPanel({ onClose }: Props) {
         <div className="flex-1 overflow-y-auto">
           <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
             <p className="text-xs text-slate-400 uppercase tracking-wider">{data.name} — {data.total} counties</p>
-            <button onClick={reset} className="text-xs text-slate-500 hover:text-slate-300">Clear</button>
+            <button onClick={clear} className="text-xs text-slate-500 hover:text-slate-300">Clear</button>
           </div>
           <div className="divide-y divide-white/5">
             {data.results.slice(0, 50).map((r) => (
