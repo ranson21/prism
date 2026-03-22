@@ -246,7 +246,7 @@ function HowItWorks() {
       number: '03',
       icon: Zap,
       title: 'Score with Explainable ML',
-      body: 'A trained Random Forest model produces a 0–100 risk score per county, with feature importances surfaced as top drivers — so every score is traceable to real-world signals.',
+      body: 'A domain-weighted composite index (FEMA NRI methodology) produces a 0–100 risk score per county. K-Means clustering assigns each county to one of five risk tiers. Every score is traceable to named, interpretable factors — no black-box inference.',
     },
     {
       number: '04',
