@@ -33,7 +33,7 @@ const FACTORS = [
   { label: 'Earthquake Activity', description: 'USGS earthquake count and max magnitude for the county region' },
   { label: 'Population Exposure', description: 'County population used to weight hazard frequency into an exposure score' },
   { label: 'Hazard Frequency', description: 'Composite rate of multi-source hazard events normalized per capita' },
-  { label: 'Economic Exposure', description: 'Census ACS median household income (B19013_001E) scaled by event severity — captures dollar-value of economic activity at risk. Higher-income counties with severe events score higher.' },
+  { label: 'Economic Risk', description: 'Derived from Census ACS median household income (B19013_001E) weighted by event severity. Counties with higher incomes and more severe hazard events score higher. Displayed as median household income in the explainability panel.' },
 ]
 
 export function InfoPanel({ onClose }: Props) {
