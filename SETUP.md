@@ -250,7 +250,25 @@ This runs inside the ml-engine ECS task (via ECS Exec):
 
 The full pipeline takes 5–15 minutes depending on external API response times.
 
-### Step 5 — Deploy static frontend
+### Step 5 — Deploy static frontend (HTTPS via Amplify)
+
+> **New AWS accounts:** CloudFront distributions require account verification that can take up to a business day. Use Amplify instead — it provides HTTPS immediately via `*.amplifyapp.com` using its own service role, bypassing the restriction.
+
+```bash
+make deploy-amplify-dev
+```
+
+This creates two Amplify apps (`prism-dev-site` and `prism-dev-dashboard`), builds each with the right API and dashboard URLs, and deploys via Amplify's manual deployment API. Both get HTTPS automatically. The command is idempotent — safe to re-run for updates.
+
+```bash
+make aws-amplify-url     # print both HTTPS URLs
+```
+
+Once CloudFront is approved, run `make deploy-static-dev` instead — it uses the S3 bucket as the CloudFront origin and everything moves to a single custom domain.
+
+---
+
+### Step 5 (alt) — Deploy static frontend (HTTP via S3)
 
 ```bash
 make deploy-static-dev

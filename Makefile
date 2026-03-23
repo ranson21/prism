@@ -12,6 +12,7 @@ export
         infra-plan-test infra-apply-test infra-destroy-test \
         ecr-login ecr-push-dev ecr-push-test \
         deploy-static-dev deploy-static-test \
+        deploy-amplify-dev aws-amplify-url \
         aws-db-migrate aws-seed-data aws-alb-url aws-s3-site-url aws-url
 
 bootstrap: bootstrap-ml bootstrap-api bootstrap-web
@@ -326,6 +327,90 @@ deploy-static-test:
 	  echo "→ Skipping invalidation (CloudFront not yet deployed)"; \
 	fi
 	@echo "✓ Static deploy complete"
+
+# ── Amplify HTTPS hosting (CloudFront-independent, demo-ready) ───────────────
+#
+# Deploys two Amplify apps (site + dashboard) with HTTPS via amplifyapp.com.
+# Does not require direct CloudFront access — Amplify uses its own service role.
+# Run once to create apps, then re-run to redeploy. Swap to CloudFront later.
+
+deploy-amplify-dev:
+	$(eval ENV    ?= dev)
+	$(eval REGION ?= us-east-1)
+	$(eval ALB_URL = $(shell aws elbv2 describe-load-balancers \
+	                   --query "LoadBalancers[?contains(LoadBalancerName,'prism-$(ENV)')].DNSName" \
+	                   --output text --region $(REGION)))
+	@set -e; \
+	R=$(REGION); ENV=$(ENV); ALB=http://$(ALB_URL); \
+	\
+	echo "→ Getting or creating Amplify app: prism-$$ENV-dashboard"; \
+	UI_ID=$$(aws amplify list-apps --region $$R \
+	  --query "apps[?name=='prism-$$ENV-dashboard'].appId" --output text); \
+	if [ -z "$$UI_ID" ]; then \
+	  UI_ID=$$(aws amplify create-app --name prism-$$ENV-dashboard --region $$R \
+	    --custom-rules '[{"source":"/<*>","target":"/index.html","status":"200"}]' \
+	    --query "app.appId" --output text); \
+	  aws amplify create-branch --app-id $$UI_ID --branch-name prod \
+	    --region $$R > /dev/null; \
+	  echo "  Created: $$UI_ID"; \
+	else echo "  Existing: $$UI_ID"; fi; \
+	\
+	echo "→ Getting or creating Amplify app: prism-$$ENV-site"; \
+	SITE_ID=$$(aws amplify list-apps --region $$R \
+	  --query "apps[?name=='prism-$$ENV-site'].appId" --output text); \
+	if [ -z "$$SITE_ID" ]; then \
+	  SITE_ID=$$(aws amplify create-app --name prism-$$ENV-site --region $$R \
+	    --custom-rules '[{"source":"/<*>","target":"/index.html","status":"200"}]' \
+	    --query "app.appId" --output text); \
+	  aws amplify create-branch --app-id $$SITE_ID --branch-name prod \
+	    --region $$R > /dev/null; \
+	  echo "  Created: $$SITE_ID"; \
+	else echo "  Existing: $$SITE_ID"; fi; \
+	\
+	DASH_URL=https://prod.$$UI_ID.amplifyapp.com; \
+	\
+	echo "→ Building dashboard (API: $$ALB)..."; \
+	cd apps/ui && VITE_API_URL=$$ALB npm run build; \
+	cd -; \
+	\
+	echo "→ Building site (dashboard: $$DASH_URL)..."; \
+	cd apps/site && VITE_DASHBOARD_URL=$$DASH_URL npm run build; \
+	cd -; \
+	\
+	echo "→ Deploying dashboard to Amplify..."; \
+	aws amplify create-deployment --app-id $$UI_ID --branch-name prod \
+	  --region $$R > /tmp/prism-ui-deploy.json; \
+	UI_JOB=$$(python3 -c "import json; print(json.load(open('/tmp/prism-ui-deploy.json'))['jobId'])"); \
+	UI_ZIP=$$(python3 -c "import json; print(json.load(open('/tmp/prism-ui-deploy.json'))['zipUploadUrl'])"); \
+	cd apps/ui/dist && zip -r /tmp/prism-ui.zip . > /dev/null && cd -; \
+	curl -s -H "Content-Type: application/zip" --upload-file /tmp/prism-ui.zip "$$UI_ZIP" > /dev/null; \
+	aws amplify start-deployment --app-id $$UI_ID --branch-name prod \
+	  --job-id $$UI_JOB --region $$R > /dev/null; \
+	\
+	echo "→ Deploying site to Amplify..."; \
+	aws amplify create-deployment --app-id $$SITE_ID --branch-name prod \
+	  --region $$R > /tmp/prism-site-deploy.json; \
+	SITE_JOB=$$(python3 -c "import json; print(json.load(open('/tmp/prism-site-deploy.json'))['jobId'])"); \
+	SITE_ZIP=$$(python3 -c "import json; print(json.load(open('/tmp/prism-site-deploy.json'))['zipUploadUrl'])"); \
+	cd apps/site/dist && zip -r /tmp/prism-site.zip . > /dev/null && cd -; \
+	curl -s -H "Content-Type: application/zip" --upload-file /tmp/prism-site.zip "$$SITE_ZIP" > /dev/null; \
+	aws amplify start-deployment --app-id $$SITE_ID --branch-name prod \
+	  --job-id $$SITE_JOB --region $$R > /dev/null; \
+	\
+	echo ""; \
+	echo "✓ Amplify deploy started (live in ~1 minute)"; \
+	echo "  Landing site: https://prod.$$SITE_ID.amplifyapp.com"; \
+	echo "  Dashboard:    https://prod.$$UI_ID.amplifyapp.com"
+
+aws-amplify-url:
+	$(eval ENV    ?= dev)
+	$(eval REGION ?= us-east-1)
+	@UI_ID=$$(aws amplify list-apps --region $(REGION) \
+	  --query "apps[?name=='prism-$(ENV)-dashboard'].appId" --output text); \
+	SITE_ID=$$(aws amplify list-apps --region $(REGION) \
+	  --query "apps[?name=='prism-$(ENV)-site'].appId" --output text); \
+	echo "Landing site: https://prod.$$SITE_ID.amplifyapp.com"; \
+	echo "Dashboard:    https://prod.$$UI_ID.amplifyapp.com"
 
 # ── Seeding & data pipeline ───────────────────────────────────────────────────
 
