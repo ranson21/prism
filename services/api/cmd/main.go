@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/prism/api/internal/db"
 	"github.com/prism/api/internal/risk"
 	"github.com/prism/api/internal/scenarios"
 	"github.com/prism/api/internal/store"
@@ -17,21 +17,12 @@ import (
 func main() {
 	_ = godotenv.Load() // load .env if present (local dev)
 
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		log.Fatal("DATABASE_URL is required")
-	}
-
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
+	pool, err := db.NewPool(ctx)
 	if err != nil {
 		log.Fatalf("connect to database: %v", err)
 	}
 	defer pool.Close()
-
-	if err := pool.Ping(ctx); err != nil {
-		log.Fatalf("ping database: %v", err)
-	}
 	log.Println("database connected")
 
 	q := store.New(pool)
@@ -42,8 +33,9 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	risk.NewHandler(q).RegisterRoutes(r.Group("/risk"))
-	scenarios.NewHandler(q).RegisterRoutes(r.Group("/scenarios"))
+	api := r.Group("/api")
+	risk.NewHandler(q).RegisterRoutes(api.Group("/risk"))
+	scenarios.NewHandler(q).RegisterRoutes(api.Group("/scenarios"))
 
 	port := os.Getenv("PORT")
 	if port == "" {

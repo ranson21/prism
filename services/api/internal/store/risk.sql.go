@@ -11,39 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getCountyHistory = `-- name: GetCountyHistory :many
-SELECT score_date, risk_score, risk_level
-FROM risk.scores s
-JOIN risk.model_versions mv ON mv.id = s.model_version_id
-WHERE s.fips_code = $1
-  AND mv.active = true
-ORDER BY score_date ASC
-LIMIT 90
-`
-
-type GetCountyHistoryRow struct {
-	ScoreDate  pgtype.Date    `json:"score_date"`
-	RiskScore  pgtype.Numeric `json:"risk_score"`
-	RiskLevel  string         `json:"risk_level"`
-}
-
-func (q *Queries) GetCountyHistory(ctx context.Context, fipsCode string) ([]GetCountyHistoryRow, error) {
-	rows, err := q.db.Query(ctx, getCountyHistory, fipsCode)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetCountyHistoryRow
-	for rows.Next() {
-		var i GetCountyHistoryRow
-		if err := rows.Scan(&i.ScoreDate, &i.RiskScore, &i.RiskLevel); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	return items, rows.Err()
-}
-
 const countRankings = `-- name: CountRankings :one
 SELECT COUNT(*)::int AS total
 FROM risk.scores s
@@ -108,6 +75,42 @@ func (q *Queries) GetCountyFeatures(ctx context.Context, fipsCode string) (GetCo
 	return i, err
 }
 
+const getCountyHistory = `-- name: GetCountyHistory :many
+SELECT score_date, risk_score, risk_level
+FROM risk.scores s
+JOIN risk.model_versions mv ON mv.id = s.model_version_id
+WHERE s.fips_code = $1
+  AND mv.active = true
+ORDER BY score_date ASC
+LIMIT 90
+`
+
+type GetCountyHistoryRow struct {
+	ScoreDate pgtype.Date    `json:"score_date"`
+	RiskScore pgtype.Numeric `json:"risk_score"`
+	RiskLevel string         `json:"risk_level"`
+}
+
+func (q *Queries) GetCountyHistory(ctx context.Context, fipsCode string) ([]GetCountyHistoryRow, error) {
+	rows, err := q.db.Query(ctx, getCountyHistory, fipsCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCountyHistoryRow
+	for rows.Next() {
+		var i GetCountyHistoryRow
+		if err := rows.Scan(&i.ScoreDate, &i.RiskScore, &i.RiskLevel); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCountyScore = `-- name: GetCountyScore :one
 SELECT
     s.fips_code,
@@ -121,7 +124,9 @@ SELECT
     s.top_drivers,
     s.score_date,
     s.confidence_lower,
-    s.confidence_upper
+    s.confidence_upper,
+    s.cluster_id,
+    s.cluster_label
 FROM risk.scores s
 JOIN geography.counties c USING (fips_code)
 JOIN risk.model_versions mv ON mv.id = s.model_version_id
@@ -131,18 +136,20 @@ WHERE s.fips_code = $1
 `
 
 type GetCountyScoreRow struct {
-	FipsCode               string         `json:"fips_code"`
-	CountyName             string         `json:"county_name"`
-	StateName              string         `json:"state_name"`
-	StateAbbr              string         `json:"state_abbr"`
-	Population             *int32         `json:"population"`
-	MedianHouseholdIncome  *int32         `json:"median_household_income"`
-	RiskScore              pgtype.Numeric `json:"risk_score"`
-	RiskLevel              string         `json:"risk_level"`
-	TopDrivers             []byte         `json:"top_drivers"`
-	ScoreDate              pgtype.Date    `json:"score_date"`
-	ConfidenceLower        pgtype.Numeric `json:"confidence_lower"`
-	ConfidenceUpper        pgtype.Numeric `json:"confidence_upper"`
+	FipsCode              string         `json:"fips_code"`
+	CountyName            string         `json:"county_name"`
+	StateName             string         `json:"state_name"`
+	StateAbbr             string         `json:"state_abbr"`
+	Population            *int32         `json:"population"`
+	MedianHouseholdIncome *int32         `json:"median_household_income"`
+	RiskScore             pgtype.Numeric `json:"risk_score"`
+	RiskLevel             string         `json:"risk_level"`
+	TopDrivers            []byte         `json:"top_drivers"`
+	ScoreDate             pgtype.Date    `json:"score_date"`
+	ConfidenceLower       pgtype.Numeric `json:"confidence_lower"`
+	ConfidenceUpper       pgtype.Numeric `json:"confidence_upper"`
+	ClusterID             *int16         `json:"cluster_id"`
+	ClusterLabel          *string        `json:"cluster_label"`
 }
 
 func (q *Queries) GetCountyScore(ctx context.Context, fipsCode string) (GetCountyScoreRow, error) {
@@ -161,6 +168,8 @@ func (q *Queries) GetCountyScore(ctx context.Context, fipsCode string) (GetCount
 		&i.ScoreDate,
 		&i.ConfidenceLower,
 		&i.ConfidenceUpper,
+		&i.ClusterID,
+		&i.ClusterLabel,
 	)
 	return i, err
 }

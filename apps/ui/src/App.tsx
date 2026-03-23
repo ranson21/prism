@@ -6,6 +6,8 @@ import { RankingsTable } from './components/RankingsTable'
 import { ExplainPanel } from './components/ExplainPanel'
 import { SummaryBar } from './components/SummaryBar'
 import { ScenarioPanel } from './components/ScenarioPanel'
+import { AboutModal } from './components/AboutModal'
+import { ResponsibleAIBanner } from './components/ResponsibleAIBanner'
 import prismLogo from './assets/prism_logo.svg'
 
 type Tab = 'dashboard' | 'scenarios'
@@ -17,13 +19,14 @@ const TABS: { id: Tab; label: string; description: string }[] = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
+  const [showAbout, setShowAbout] = useState(false)
   const [selectedFips, setSelectedFips] = useState<string | null>(null)
   const [simResults, setSimResults] = useState<SimResult[] | null>(null)
   const [simFips, setSimFips] = useState<Set<string>>(new Set())
   const [focusSelected, setFocusSelected] = useState(false)
 
   const { data: summary } = useGetSummaryQuery()
-  const { data: rankings, isLoading } = useGetRankingsQuery({ limit: 100 })
+  const { data: rankings, isLoading } = useGetRankingsQuery({ limit: 3500 })
 
   const counties = rankings?.rankings ?? []
 
@@ -88,7 +91,15 @@ export default function App() {
             <p className="text-xs text-slate-400 mt-0.5">Prioritization of Risk &amp; Incident Support Model</p>
           </div>
         </div>
+        <button
+          onClick={() => setShowAbout(true)}
+          className="text-xs text-slate-400 hover:text-slate-100 border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+        >
+          About / Agency Pilot
+        </button>
       </header>
+
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
 
       {/* Tab nav */}
       <nav className="px-6 border-b border-white/10 flex gap-1 shrink-0">
@@ -117,10 +128,14 @@ export default function App() {
         )}
 
         {!isLoading && activeTab === 'dashboard' && (
+          <ResponsibleAIBanner />
+        )}
+
+        {!isLoading && activeTab === 'dashboard' && (
           <div className="flex-1 min-h-0 grid grid-cols-[360px_300px_1fr] gap-4">
             {/* Rankings Table */}
             <RankingsTable
-              rankings={counties}
+              rankings={counties.slice(0, 100)}
               selectedFips={selectedFips}
               onSelect={setSelectedFips}
             />
@@ -204,11 +219,18 @@ export default function App() {
       </main>
 
       <footer className="px-6 py-3 border-t border-white/10 flex items-center justify-between shrink-0">
-
         <p className="text-xs text-slate-600">
           Data sources: FEMA OpenFEMA · NWS Alerts · USGS Earthquake Catalog
         </p>
-        <p className="text-xs text-slate-600">Powered by Sky Solutions LLC</p>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setShowAbout(true)}
+            className="text-xs text-slate-500 hover:text-blue-400 transition-colors cursor-pointer"
+          >
+            Expansion Roadmap: Phase 1 → Phase 2 →
+          </button>
+          <p className="text-xs text-slate-600">Powered by Sky Solutions LLC</p>
+        </div>
       </footer>
     </div>
   )

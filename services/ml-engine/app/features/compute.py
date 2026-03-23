@@ -1,17 +1,20 @@
 """
 Feature engineering: raw_events → county_features.
 
-For each county with events in the look-back window, compute:
+For every county in geography.counties (whether or not it has recent events):
   - disaster_count / major_disaster_count
   - severe_weather_count
   - earthquake_count / max_earthquake_magnitude
   - population_exposure  (population × severity_weight, summed)
   - hazard_frequency_score  (weighted events per 30 days)
+  - log_population       (ln(population + 1) — inherent exposure scale)
+  - income_vulnerability (1 − income/120000 — lower income → higher vulnerability)
 
 Severity weights: minor=1, moderate=2, major=3, extreme=4
 """
 
 import logging
+import math
 from datetime import date, datetime, timedelta, timezone
 
 import psycopg
@@ -77,17 +80,23 @@ async def _aggregate_events(
     cur = await conn.execute(
         """
         SELECT
-            e.fips_code,
+            c.fips_code,
             c.population,
             c.median_household_income,
-            COUNT(*)                                                    AS total_count,
-            COUNT(*) FILTER (WHERE e.event_type = 'disaster')          AS disaster_count,
-            COUNT(*) FILTER (
+            COALESCE(COUNT(e.id), 0)                                    AS total_count,
+            COALESCE(COUNT(e.id) FILTER (
+                WHERE e.event_type = 'disaster'
+            ), 0)                                                        AS disaster_count,
+            COALESCE(COUNT(e.id) FILTER (
                 WHERE e.event_type = 'disaster'
                 AND e.severity IN ('major', 'extreme')
-            )                                                           AS major_disaster_count,
-            COUNT(*) FILTER (WHERE e.event_type = 'weather')           AS severe_weather_count,
-            COUNT(*) FILTER (WHERE e.event_type = 'earthquake')        AS earthquake_count,
+            ), 0)                                                        AS major_disaster_count,
+            COALESCE(COUNT(e.id) FILTER (
+                WHERE e.event_type = 'weather'
+            ), 0)                                                        AS severe_weather_count,
+            COALESCE(COUNT(e.id) FILTER (
+                WHERE e.event_type = 'earthquake'
+            ), 0)                                                        AS earthquake_count,
             MAX(
                 CASE
                     WHEN e.event_type = 'earthquake'
@@ -95,8 +104,7 @@ async def _aggregate_events(
                     ELSE NULL
                 END
             )                                                           AS max_earthquake_magnitude,
-            -- Weighted severity sum
-            SUM(
+            COALESCE(SUM(
                 CASE e.severity
                     WHEN 'extreme'  THEN 4
                     WHEN 'major'    THEN 3
@@ -104,13 +112,12 @@ async def _aggregate_events(
                     WHEN 'minor'    THEN 1
                     ELSE 0
                 END
-            )                                                           AS severity_weight_sum
-        FROM datasets.raw_events e
-        JOIN geography.counties c USING (fips_code)
-        WHERE e.fips_code IS NOT NULL
-          AND e.event_start >= %(since)s
-        GROUP BY e.fips_code, c.population, c.median_household_income
-        HAVING COUNT(*) > 0
+            ), 0)                                                       AS severity_weight_sum
+        FROM geography.counties c
+        LEFT JOIN datasets.raw_events e
+            ON e.fips_code = c.fips_code
+           AND e.event_start >= %(since)s
+        GROUP BY c.fips_code, c.population, c.median_household_income
         """,
         {"since": since},
     )
@@ -151,6 +158,19 @@ async def _upsert_features(
             else 0.0
         )
 
+        # log_population: ln(population + 1) — standalone inherent exposure scale.
+        # Differentiates counties even when no active events are present.
+        log_population = round(math.log(population + 1), 4) if population else 0.0
+
+        # income_vulnerability: 1 - income/120000, floored at 0.
+        # Lower-income counties have higher vulnerability regardless of active events.
+        # Anchored at $120k (~95th percentile of US county median income).
+        income_vulnerability = (
+            round(max(0.0, 1.0 - float(median_household_income) / 120_000.0), 4)
+            if median_household_income is not None
+            else 0.5
+        )
+
         features = {
             "disaster_count": row["disaster_count"],
             "major_disaster_count": row["major_disaster_count"],
@@ -161,6 +181,8 @@ async def _upsert_features(
             "population_exposure": population_exposure,
             "hazard_frequency_score": hazard_frequency_score,
             "economic_exposure": economic_exposure,
+            "log_population": log_population,
+            "income_vulnerability": income_vulnerability,
             "total_event_count": total_count,
         }
 
@@ -171,13 +193,14 @@ async def _upsert_features(
                 disaster_count, major_disaster_count, severe_weather_count,
                 earthquake_count, max_earthquake_magnitude,
                 population_exposure, hazard_frequency_score,
-                economic_exposure, features
+                economic_exposure, log_population, income_vulnerability, features
             ) VALUES (
                 %(fips_code)s, %(feature_date)s, %(window_days)s,
                 %(disaster_count)s, %(major_disaster_count)s, %(severe_weather_count)s,
                 %(earthquake_count)s, %(max_earthquake_magnitude)s,
                 %(population_exposure)s, %(hazard_frequency_score)s,
-                %(economic_exposure)s, %(features)s
+                %(economic_exposure)s, %(log_population)s, %(income_vulnerability)s,
+                %(features)s
             )
             ON CONFLICT (fips_code, feature_date, window_days) DO UPDATE SET
                 disaster_count           = EXCLUDED.disaster_count,
@@ -188,6 +211,8 @@ async def _upsert_features(
                 population_exposure      = EXCLUDED.population_exposure,
                 hazard_frequency_score   = EXCLUDED.hazard_frequency_score,
                 economic_exposure        = EXCLUDED.economic_exposure,
+                log_population           = EXCLUDED.log_population,
+                income_vulnerability     = EXCLUDED.income_vulnerability,
                 features                 = EXCLUDED.features,
                 computed_at              = now()
             """,
@@ -203,6 +228,8 @@ async def _upsert_features(
                 "population_exposure": population_exposure,
                 "hazard_frequency_score": hazard_frequency_score,
                 "economic_exposure": economic_exposure,
+                "log_population": log_population,
+                "income_vulnerability": income_vulnerability,
                 "features": Jsonb(features),
             },
         )

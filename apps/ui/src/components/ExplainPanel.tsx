@@ -13,6 +13,8 @@ const FACTOR_LABEL: Record<string, string> = {
   earthquake_count:          'Earthquakes',
   max_earthquake_magnitude:  'Max Magnitude',
   disaster_count:            'Disasters',
+  log_population:            'Population Scale',
+  income_vulnerability:      'Income Vulnerability',
 }
 
 type PanelTab = 'drivers' | 'history'
@@ -42,7 +44,14 @@ export function ExplainPanel({ fips }: Props) {
           <p className="text-xs text-slate-400">{data.state_name}</p>
           <h2 className="text-base font-semibold text-slate-100">{data.county_name}</h2>
         </div>
-        <RiskBadge level={data.risk_level} />
+        <div className="flex flex-col items-end gap-1">
+          <RiskBadge level={data.risk_level} />
+          {data.cluster_label && (
+            <span className="text-[10px] font-medium text-slate-300 bg-slate-700/60 border border-white/10 rounded px-2 py-0.5 whitespace-nowrap">
+              {data.cluster_label}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Score row */}

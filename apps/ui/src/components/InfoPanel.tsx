@@ -23,17 +23,18 @@ const STEPS = [
   {
     number: '04',
     title: 'Run & Compare',
-    body: 'The simulator applies your parameters against the active ML model\'s baseline scores and returns delta values (Δ) showing how much each county\'s risk would change.',
+    body: 'The simulator applies your parameters against the active model\'s baseline scores and returns delta values (Δ) showing how much each county\'s risk would change. Set Resource Units to model greedy pre-positioning — highest-risk counties are allocated first.',
   },
 ]
 
 const FACTORS = [
-  { label: 'Severe Weather Alerts', description: 'Active NWS alerts weighted by severity (minor → extreme)' },
-  { label: 'Disaster Declarations', description: 'FEMA major disaster declarations in the trailing 90-day window' },
-  { label: 'Earthquake Activity', description: 'USGS earthquake count and max magnitude for the county region' },
-  { label: 'Population Exposure', description: 'County population used to weight hazard frequency into an exposure score' },
-  { label: 'Hazard Frequency', description: 'Composite rate of multi-source hazard events normalized per capita' },
-  { label: 'Economic Risk', description: 'Derived from Census ACS median household income (B19013_001E) weighted by event severity. Counties with higher incomes and more severe hazard events score higher. Displayed as median household income in the explainability panel.' },
+  { label: 'Severe Weather Alerts', description: 'Active NWS alerts weighted by severity (minor → extreme). Weight: 22%.' },
+  { label: 'Earthquake Activity', description: 'USGS earthquake count (10%) and max magnitude (14%) for the county region.' },
+  { label: 'Hazard Frequency', description: 'Composite rate of multi-source hazard events normalized per capita. Weight: 18%.' },
+  { label: 'Population Scale', description: 'Log-transformed county population — ensures low-population counties with high hazard exposure are still surfaced. Weight: 12%.' },
+  { label: 'Population Exposure', description: 'County population scaled by hazard frequency, capturing the number of people in harm\'s way. Weight: 8%.' },
+  { label: 'Economic Exposure', description: 'Derived from Census ACS median household income (B19013_001E) weighted by event severity. Weight: 8%.' },
+  { label: 'Income Vulnerability', description: 'Inverse income index: lower-income counties score higher, reflecting reduced capacity to absorb disaster impact. Weight: 8%.' },
 ]
 
 export function InfoPanel({ onClose }: Props) {
@@ -90,25 +91,41 @@ export function InfoPanel({ onClose }: Props) {
             </div>
           </section>
 
+          {/* Scoring methodology */}
+          <section>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Scoring Methodology</p>
+            <div className="bg-[#1F2937] rounded-xl px-4 py-4 space-y-3 text-xs text-slate-400 leading-relaxed">
+              <p>
+                PRISM uses an <span className="text-slate-200 font-medium">Explainable Risk Index</span> — the same methodology as the FEMA National Risk Index. Features are normalized to [0, 1] via MinMaxScaler, then combined with expert-calibrated weights. Scores are rank-normalized to a right-skewed distribution so most counties fall in the low tier with meaningful separation at elevated and critical.
+              </p>
+              <p>
+                An unsupervised <span className="text-slate-200 font-medium">K-Means clustering</span> (k=5) groups counties by their full normalized feature profile into risk tiers (Tier 1 — Minimal Activity through Tier 5 — High-Risk Composite). Tiers are ranked by mean composite score so Tier 1 is always the lowest-risk profile.
+              </p>
+              <p className="text-slate-500">
+                A supervised classifier (e.g. random forest) was evaluated but FEMA major disaster declarations within a 90-day window yield near-zero positive labels — insufficient for probability calibration. The composite index + clustering approach produces stable, auditable scores better suited to this domain.
+              </p>
+            </div>
+          </section>
+
           {/* Confidence band */}
           <section>
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Confidence Band</p>
             <div className="bg-[#1F2937] rounded-xl px-4 py-4 space-y-3">
               <p className="text-xs text-slate-400 leading-relaxed">
-                Each risk score is accompanied by a <span className="text-slate-200 font-medium">confidence band</span> — a lower and upper bound derived from the spread of predictions across all decision trees in the random forest model.
+                Each risk score includes a <span className="text-slate-200 font-medium">confidence band</span> — a lower and upper bound reflecting how consistently the model's input features point in the same direction.
               </p>
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 shrink-0" />
-                  <p className="text-xs text-slate-400"><span className="text-slate-200">Narrow band</span> — trees agree strongly; higher confidence in the score.</p>
+                  <p className="text-xs text-slate-400"><span className="text-slate-200">Narrow band</span> — weighted features align closely; higher confidence in the score.</p>
                 </div>
                 <div className="flex gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0" />
-                  <p className="text-xs text-slate-400"><span className="text-slate-200">Wide band</span> — trees disagree; treat the score as an estimate and weight other signals accordingly.</p>
+                  <p className="text-xs text-slate-400"><span className="text-slate-200">Wide band</span> — features pull in different directions; treat the score as an estimate and weight other signals accordingly.</p>
                 </div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Formula: <span className="font-mono text-sky-300">lower = (p̄ − σ) × 100</span>, <span className="font-mono text-sky-300">upper = (p̄ + σ) × 100</span> where p̄ is the mean tree probability and σ is the standard deviation across estimators.
+                Formula: <span className="font-mono text-sky-300">lower = (rank − σ) × 100</span>, <span className="font-mono text-sky-300">upper = (rank + σ) × 100</span> where rank is the percentile score and σ is the relative standard deviation of the weighted feature vector.
               </p>
             </div>
           </section>

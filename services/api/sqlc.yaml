@@ -1,7 +1,11 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    schema: "../../environments/local/migrations/001_init_schema.sql"
+    schema:
+      - "../../environments/local/migrations/001_init_schema.sql"
+      - "../../environments/local/migrations/002_add_economic_exposure.sql"
+      - "../../environments/local/migrations/003_add_vulnerability_features.sql"
+      - "../../environments/local/migrations/004_add_cluster_to_scores.sql"
     queries: "sql/queries"
     gen:
       go:

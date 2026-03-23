@@ -47,7 +47,9 @@ SELECT
     s.top_drivers,
     s.score_date,
     s.confidence_lower,
-    s.confidence_upper
+    s.confidence_upper,
+    s.cluster_id,
+    s.cluster_label
 FROM risk.scores s
 JOIN geography.counties c USING (fips_code)
 JOIN risk.model_versions mv ON mv.id = s.model_version_id

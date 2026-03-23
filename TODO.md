@@ -45,42 +45,63 @@
 ## Working Prototype Checklist
 _Ensures the demo is end-to-end functional and compelling._
 
-- [ ] Seed realistic scenario definitions for demo
-- [ ] End-to-end smoke test (ingest → score → API → UI)
-- [ ] Verify map heatmap renders with live scored data
-- [ ] Verify explainability panel loads correctly for top-ranked counties
-- [ ] Verify scenario simulation shows meaningful delta scores
-- [ ] Confirm confidence bands display on explain view
+- [x] Seed realistic scenario definitions for demo
+- [x] End-to-end smoke test (ingest → score → API → UI)
+- [x] Verify map heatmap renders with live scored data
+- [x] Verify explainability panel loads correctly for top-ranked counties
+- [x] Verify scenario simulation shows meaningful delta scores
+- [x] Confirm confidence bands display on explain view
 
 ---
 
 ## Documentation & Methodology
 _Required artifacts for judging on Technical Soundness and Explainability._
 
-- [ ] **README** — setup instructions, architecture summary, demo script, data sources cited
-- [ ] **Architecture diagram** — service boundaries (React → Go API → ML Engine → PostgreSQL), data flow, and ingestion sources (FEMA, NWS, USGS, Census); include in `docs/architecture.md` or as a diagram image
-- [ ] **Risk scoring methodology doc** — document feature engineering logic, model choice (random forest), confidence band derivation, and risk level thresholds; add to `docs/ml_pipeline.md`
-- [ ] **Responsible AI section** — document data sources and limitations, uncertainty communication (confidence bands), avoidance of deterministic claims, bias/equity considerations (economic exposure proxy), and model update cadence; add to `docs/responsible_ai.md`
+- [x] **README** — setup instructions, architecture summary, demo script, data sources cited
+- [x] **Architecture diagram** — 3-tier network diagram (Mermaid) with government cloud deployment path, FedRAMP control mapping, and data flow; in `docs/architecture.md`
+- [x] **Risk scoring methodology doc** — feature engineering, composite index + K-Means methodology, confidence band derivation, risk thresholds, why-not-classifier rationale; in `docs/ml_pipeline.md`
+- [x] **Responsible AI section** — data sources and limitations, uncertainty communication, non-deterministic framing, equity-aware modeling, model auditability, human-in-the-loop requirement; in `docs/responsible_ai.md`
 
 ---
 
 ## Demo Assets
 _Required for Demo Clarity and Mission Relevance judging._
 
-- [ ] **5-minute "Path to Agency Pilot" briefing** — slide deck or one-pager covering: problem statement, PRISM solution overview, live demo flow, agency adoption path, and responsible AI commitments; store in `docs/agency_pilot_brief.md` or `docs/pitch/`
-- [ ] Demo script / talking points aligned to judging narrative: "Where should we act right now, and why?"
+- [x] **5-minute "Path to Agency Pilot" briefing** — problem statement, solution overview, 5-scene demo flow (site → dashboard → explain → scenario → back to site), adoption path, responsible AI commitments, technical credentials; `docs/agency_pilot_brief.md`
+- [x] **Demo script / talking points** — 5-scene script with URLs, on-screen actions, talking points, Q&A prep, key numbers; opens on landing site (`http://localhost`), transitions to dashboard (`http://localhost:3000`); `docs/demo_script.md`
+
+## UI — Agency Pilot & Responsible AI Gaps
+_Site currently has no in-app narrative for agency adoption or visible responsible AI commitments._
+
+- [x] **About / Mission modal or tab** — 1-screen in-app narrative covering: problem statement (agencies overwhelmed during disasters), how PRISM fits into FEMA/EOC workflow, and the path to agency pilot; should be accessible from the main nav/header
+- [x] **Responsible AI callout** — visible banner or panel on the dashboard (not buried in simulator help modal) surfacing: data sources (FEMA, NWS, USGS, Census), uncertainty communication, and non-deterministic framing; directly supports Explainability & Responsible AI judging criterion
+- [x] **Expansion path visibility** — at minimum a note in the About modal or footer linking to the Phase 1 → Phase 2 arc so judges see the scale path without leaving the app
 
 ---
+
+
+## Additional Features
+
+- [ ] Let users lasso parts of the map to select counties to generate simulations against
+- [ ] Add  a dropdown to allow users to change the view from the default of county view to state and region (NE, NW, SE, etc.)
+- [ ] Add a toggle to display or hide U.S. territories
+- [ ] Add the ability to simulate multiple disasters on different counties as part of a scenario
+- [ ] Add the ability to save simulations
+- [ ] Make the risk levels at the top filter options so we can display onlt criticals, elevetated etc.
+- [ ] Add filter dropdown to risk rankings to toggle the number and types of rankings shown
+- [ ] Auto zoom selected county to a comfortable zoom level that shows surrounding counties but not the whole zoomed out map, this should also work when the app loads to zoom on the default
+
+--- 
 
 ## Judging Criteria Alignment Checklist
 _Verify each criterion is demonstrably addressed before submission._
 
-- [ ] **Mission Relevance (High)** — demo shows improved disaster preparedness + proactive resource prioritization using real public data
-- [ ] **Technical Soundness (High)** — architecture diagram reviewed, ML pipeline documented, API contracts match spec, all services run via Docker Compose
-- [ ] **Explainability & Responsible AI (High)** — top_drivers visible in UI, confidence bands shown, responsible AI doc complete, no deterministic claims in UI copy
-- [ ] **Feasibility for Agency Adoption (High)** — agency pilot briefing covers integration path, data source provenance documented, cloud-native architecture noted
-- [ ] **Innovation (Medium)** — scenario simulation and geo-aware defaults highlighted in demo
-- [ ] **Demo Clarity (Medium)** — demo script rehearsed, ranked table leads with highest-risk counties, explain panel tells a clear story
+- [x] **Mission Relevance (High)** — resource pre-positioning with DEPLOYED/UNMET allocation model, real public data (FEMA/NWS/USGS/Census), proactive county risk ranking for all 3,220 counties
+- [x] **Technical Soundness (High)** — Mermaid 3-tier architecture diagram, K-Means + confidence band ML pipeline doc, all 5 services in Docker Compose, all API endpoints match spec (GET /risk/summary|rankings|explain|history, POST /scenarios/simulate)
+- [x] **Explainability & Responsible AI (High)** — top_drivers bar chart + confidence band in ExplainPanel, ResponsibleAIBanner with "Not Deterministic" pillar, docs/responsible_ai.md complete, zero banned phrases ("will happen", "guarantee") found in UI or site copy
+- [x] **Feasibility for Agency Adoption (High)** — Phase 1/2 roadmap in agency_pilot_brief.md, FedRAMP control mapping + GovCloud deployment path in architecture.md, data source provenance and limitations documented
+- [x] **Innovation (Medium)** — scenario simulator with greedy resource pre-positioning (unique to risk tools), browser geolocation auto-selects user's home county, K-Means risk tiers as peer-group benchmarking layer
+- [x] **Demo Clarity (Medium)** — 5-scene demo script with URLs + talking points, ExplainPanel shows score/confidence/drivers/tier/history, rankings sorted by risk_score DESC, clear site → dashboard → explain → scenario → roadmap narrative arc
 
 ---
 
@@ -99,3 +120,21 @@ _Post-hackathon architecture decisions to note now so MVP design supports them._
 - [ ] Note **multi-hazard fusion engine** — current multi-source feature engineering is the seed of this
 - [ ] Note **predictive seasonal outlook modeling** — extend scoring to forward-looking time horizons
 - [ ] Note **secure cloud deployment** path (containerized services → Kubernetes / managed cloud)
+
+---
+
+## ML Requirements Gap
+_Must satisfy judging requirement: "Uses statistical or ML methods (logistic regression, gradient boosting, random forest)"._
+_Dropping the random forest left us with a weighted composite index — valid statistically, but not one of the listed ML methods._
+
+- [x] **K-Means clustering layer** — add unsupervised K-Means (sklearn) to the scoring pipeline; cluster all 3,220 counties by their normalized feature profile into K=5 risk tiers; use cluster assignment + distance from the highest-risk centroid as a ML-derived signal; store `cluster_id` per score row; surface "Risk Cluster" in the explain panel — satisfies the ML requirement with an algorithm genuinely appropriate for unlabeled hazard data
+- [x] **Update methodology doc** — `docs/ml_pipeline.md` fully rewritten: covers Explainable Risk Index + K-Means approach, "Why Not a Classifier?" section documents label sparsity (FEMA declarations lag, <1% positive rate in 90-day window), and why clustering fits unsupervised risk profiling
+
+---
+
+## Prioritization Framework Gap
+_Must satisfy judging requirement: "Simulates pre-positioning of limited resources"._
+_Current scenario simulator models risk change but does not allocate resources or show coverage gaps._
+
+- [x] **Resource pre-positioning model** — `POST /scenarios/simulate` accepts `resource_units`; greedy allocation (highest delta-risk first, capped at 500); returns `allocated_resources`, `unmet_need` per county, plus `total_allocated` and `total_unmet` in response
+- [x] **Resource allocation UI** — Resource Units slider (0–500) in ScenarioPanel; DEPLOYED badge (green) on allocated counties, UNMET badge (amber) on coverage gaps; allocation summary (X allocated / Y unmet) shown in results header
