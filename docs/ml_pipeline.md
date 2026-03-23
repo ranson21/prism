@@ -144,3 +144,63 @@ POST /score    → score all counties under the new model version
 ```
 
 For a production agency deployment, the recommended cadence is daily ingestion and scoring with weekly model retraining.
+
+---
+
+## Expansion Path
+
+### Infrastructure Vulnerability Modeling
+
+The current feature set captures hazard exposure (what events happened) and population exposure (who is affected). A key missing dimension is **infrastructure vulnerability** — how resilient is the county's physical infrastructure to those hazards.
+
+Planned additions to `risk.county_features`:
+
+| Feature | Source | Description |
+|---------|--------|-------------|
+| `critical_facilities_at_risk` | HIFLD (DHS) | Hospitals, power plants, water treatment within flood/fire zones |
+| `road_network_disruption_score` | TIGER + FEMA flood zones | % of major roads in high-hazard zones |
+| `housing_age_index` | ACS B25035 | Median housing age — proxy for building code compliance |
+| `levee_proximity_score` | USACE NLD | Proximity to aging or unaccredited levees |
+| `utility_grid_exposure` | EIA | Power transmission lines in severe weather corridors |
+
+These features are all available from free federal datasets and would plug into the existing `compute.py` feature engineering pipeline as additional columns in `risk.county_features`. No model architecture changes are required — the composite weighting step accommodates additional features by adding weights that sum to 1.
+
+### Multi-Hazard Fusion Engine
+
+PRISM's current feature engineering already performs implicit multi-hazard fusion — `hazard_frequency_score` aggregates events across FEMA, NWS, and USGS sources into a single per-capita rate. The next step is an explicit **hazard interaction model** that captures compounding effects:
+
+```
+Current:    score = w₁·weather + w₂·earthquake + w₃·population + ...
+            (hazards treated as independent)
+
+Phase 2:    score = composite_index + interaction_terms
+            interaction_terms = f(drought × wildfire, flood × landslide, ...)
+```
+
+For example, a drought simultaneously elevates wildfire risk and weakens soil stability for landslides. These compound hazard pairs are documented in FEMA's Multi-Hazard Mitigation Planning guidance and could be modeled as multiplicative interaction features.
+
+The current pipeline architecture (feature matrix → composite weights → K-Means) is the natural foundation for this — interaction terms are additional columns in `risk.county_features` computed before the weighting step.
+
+### Predictive Seasonal Outlook Modeling
+
+Current scoring is retrospective: it reflects the past 90 days of events. A seasonal outlook model would extend scoring to **forward-looking time horizons**.
+
+Approach:
+
+```
+Historical feature vectors (3–5 years)
+    + Seasonal climate indices (ENSO, PDO, AMO)
+    + NOAA seasonal outlook probabilities
+    + USGS groundwater levels (drought proxy)
+    ↓
+Time-series model (ARIMA or LSTM per hazard type)
+    ↓
+Forecast feature vectors for 30/60/90 days ahead
+    ↓
+Scored through existing composite index → risk.scores
+    (with forecast_horizon column added to differentiate)
+```
+
+The UI already has the historical trend chart infrastructure in the Explain panel — the same component would render both historical trend and forecast horizon with a clear visual boundary at "today."
+
+NOAA publishes monthly [Climate Outlooks](https://www.cpc.ncep.noaa.gov/products/predictions/long_range/) for temperature and precipitation probability at the climate division level, which can be disaggregated to county FIPS using existing Census geographic mappings.

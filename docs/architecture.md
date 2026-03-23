@@ -215,3 +215,123 @@ make docker-up                 Managed PostgreSQL (RDS)           GitOps deploym
 | **SI — System Integrity** | Immutable container images; pinned base image digests |
 | **CM — Configuration Mgmt** | Infrastructure as code (Docker Compose → Kubernetes manifests) |
 | **RA — Risk Assessment** | PRISM itself is a risk assessment tool; model methodology documented |
+
+---
+
+## Expansion Path
+
+### Phase 1 — Agency Pilot
+
+#### State EOC Integration Interface
+
+PRISM's Go API is the natural integration point for state Emergency Operations Centers. The planned interface is a **webhook receiver** endpoint that accepts incoming incident reports from EOC systems:
+
+```
+POST /api/integrations/eoc/events
+Content-Type: application/json
+X-EOC-Token: <shared-secret>
+
+{
+  "county_fips": "06037",
+  "incident_type": "wildfire",
+  "severity": 0.85,
+  "reported_at": "2026-03-22T14:30:00Z",
+  "source_agency": "CAL OES"
+}
+```
+
+Received events are written to `datasets.raw_events` with `source = "eoc_push"` and trigger a partial re-score for the affected county. This allows PRISM to incorporate real-time ground-truth reports alongside its public data feeds without replacing the existing pipeline.
+
+**Alternatively**, PRISM can push risk alerts to EOC systems on score threshold crossings:
+
+```
+POST <eoc-webhook-url>
+{
+  "county_fips": "06037",
+  "county_name": "Los Angeles County, CA",
+  "risk_score": 84.2,
+  "risk_level": "critical",
+  "top_drivers": [...],
+  "triggered_at": "2026-03-22T15:00:00Z"
+}
+```
+
+This push model requires adding a notification service (Go goroutine or Lambda) and a subscriber registry in the database.
+
+#### Logistics Optimization Service
+
+The current scenario simulator uses a greedy resource pre-positioning algorithm (highest delta-risk first). A dedicated logistics optimization service would replace this with a proper constrained allocation model:
+
+```
+┌─────────────────────────────────────────────────┐
+│  Logistics Optimization Service (future)         │
+│                                                  │
+│  Inputs:                                         │
+│    risk.scores (county risk + delta)             │
+│    resource inventory (type, quantity, location) │
+│    travel time matrix (county → depot)           │
+│                                                  │
+│  Algorithm:                                      │
+│    Mixed-integer programming (PuLP / OR-Tools)   │
+│    Minimize: unmet need × severity weight        │
+│    Subject to: resource capacity, travel time    │
+│                                                  │
+│  Output:                                         │
+│    Per-county allocation plan                    │
+│    Deployment sequence + route                   │
+└─────────────────────────────────────────────────┘
+```
+
+This would be extracted as a standalone domain service (`services/logistics`) following the existing modular monolith pattern, with its own schema (`logistics.*`) and REST endpoints consumed by the scenario simulator.
+
+---
+
+### Phase 2 — Enterprise Disaster Intelligence Platform
+
+#### Satellite Imagery Integration
+
+Satellite imagery provides direct observational data on infrastructure damage, flood extent, and fire perimeters — signals that lag significantly in FEMA declarations or NWS alerts.
+
+```
+┌─ Imagery Ingest Layer ────────────────────────────────────┐
+│                                                            │
+│  Sources:                                                  │
+│    Sentinel-2 (ESA, free) — 10m resolution, 5-day revisit │
+│    Landsat 9 (USGS, free) — 30m resolution, 16-day revisit│
+│    Commercial (Planet, Maxar) — near-daily, licensed       │
+│                                                            │
+│  Ingest Worker (Python)                                    │
+│    ├─ Fetch scene for affected county BBOX                 │
+│    ├─ Run change detection vs. pre-event baseline          │
+│    ├─ Extract damage proxy metric (0–1)                    │
+│    └─ Write to datasets.raw_events (source = "satellite")  │
+│                                                            │
+│  Integration Point:                                        │
+│    New BaseConnector subclass — slots into existing         │
+│    ingestion pipeline with no schema changes               │
+└────────────────────────────────────────────────────────────┘
+```
+
+The existing `raw_events` schema accommodates satellite-derived events. The feature engineering layer would add a new `satellite_damage_score` feature column to `risk.county_features`.
+
+#### Secure Cloud Deployment Path (Phase 2)
+
+```
+Phase 1 (current)                    Phase 2
+──────────────────────────           ──────────────────────────────────────
+AWS ECS Fargate (containerized)  →   Kubernetes (EKS / AKS GovCloud)
+Single-region (us-east-1)        →   Multi-region active-passive
+RDS PostgreSQL                   →   RDS Multi-AZ + read replicas
+S3 + CloudFront (static)         →   Global CDN with geo-routing
+Secrets Manager (KMS)            →   Zero Trust / SPIFFE workload identity
+CloudTrail logging               →   SIEM integration (Splunk / Chronicle)
+Manual model deploys             →   GitOps (Flux / ArgoCD) + model registry
+```
+
+The containerized ECS architecture is intentionally Kubernetes-compatible — the same Docker images run unchanged on EKS. Migration is a re-platform operation, not a rewrite. Kubernetes manifests would replace the current ECS task definitions and are a natural follow-on to the existing Terragrunt infrastructure-as-code.
+
+**Key additions for Phase 2 hardening:**
+- Horizontal Pod Autoscaler on the Go API (traffic spikes during disasters)
+- Separate node pools for ML training workloads (GPU-enabled nodes for imagery processing)
+- Network policies enforcing zero east-west traffic by default
+- OPA/Gatekeeper admission control for FedRAMP High policy enforcement

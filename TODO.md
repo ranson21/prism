@@ -109,17 +109,17 @@ _Verify each criterion is demonstrably addressed before submission._
 _Post-hackathon architecture decisions to note now so MVP design supports them._
 
 ### Phase 1 — Agency Pilot
-- [ ] Document hook points for **real-time weather feed ingestion** (NWS WebSocket / streaming API replacement for polling connector)
-- [ ] Document **state emergency operations center integration** interface (webhook receiver or API push endpoint in Go service)
-- [ ] Note **logistics optimization modeling** as a future domain service in architecture diagram
-- [ ] Note **cross-agency data fusion** pattern (additional connector + raw_events normalization) in data pipeline docs
+- [x] Document hook points for **real-time weather feed ingestion** (NWS WebSocket / streaming API replacement for polling connector)
+- [x] Document **state emergency operations center integration** interface (webhook receiver or API push endpoint in Go service)
+- [x] Note **logistics optimization modeling** as a future domain service in architecture diagram
+- [x] Note **cross-agency data fusion** pattern (additional connector + raw_events normalization) in data pipeline docs
 
 ### Phase 2 — Enterprise Disaster Intelligence Platform
-- [ ] Note **satellite imagery integration** layer in architecture diagram (image ingest → feature extraction service)
-- [ ] Note **infrastructure vulnerability modeling** as an additional ML feature domain
-- [ ] Note **multi-hazard fusion engine** — current multi-source feature engineering is the seed of this
-- [ ] Note **predictive seasonal outlook modeling** — extend scoring to forward-looking time horizons
-- [ ] Note **secure cloud deployment** path (containerized services → Kubernetes / managed cloud)
+- [x] Note **satellite imagery integration** layer in architecture diagram (image ingest → feature extraction service)
+- [x] Note **infrastructure vulnerability modeling** as an additional ML feature domain
+- [x] Note **multi-hazard fusion engine** — current multi-source feature engineering is the seed of this
+- [x] Note **predictive seasonal outlook modeling** — extend scoring to forward-looking time horizons
+- [x] Note **secure cloud deployment** path (containerized services → Kubernetes / managed cloud)
 
 ---
 
