@@ -78,13 +78,13 @@ This is a feature, not a bug: it mirrors how real resource allocation works. A m
 
 ### Why is so much of Mississippi, Alabama, Tennessee, and Kentucky showing as critical?
 
-This is real data, not a model artifact — but it needs context.
+This is real data, but it has two important qualifiers: **it is seasonal, and it conflates alert frequency with confirmed impact.**
 
-These states sit in **"Dixie Alley"**, a severe weather corridor that actually produces more tornado fatalities annually than the Great Plains. NOAA issues an extraordinary volume of tornado watches, severe thunderstorm warnings, and flash flood alerts here. In the current data window, Mississippi has zero low-risk counties and 61% critical — that reflects genuine NOAA alert density, not a scoring mistake.
+**Seasonality:** The current 90-day window covers late December through late March — the tail end of Dixie Alley's secondary fall/winter tornado season and the beginning of its primary spring peak. These states genuinely receive elevated NOAA alert volume during this period. The same counties would score meaningfully lower in July and August, when the Southeast is dominated by heat and drought rather than severe convective weather. The model is correctly reflecting current-window conditions, not making a permanent judgment.
 
-The honest limitation is that PRISM scores **alert frequency, not confirmed impact**. A county can receive 31 tornado watches in 90 days with zero confirmed touchdowns. `hazard_frequency_score` captures how often NOAA is issuing alerts for a county, not whether those events materialized into disasters or declarations.
+**Alert frequency vs. confirmed impact:** PRISM scores how often NOAA is issuing watches and warnings for a county, not whether those events materialized into confirmed touchdowns or FEMA declarations. A county can receive 31 tornado watches in 90 days with zero confirmed disasters. `hazard_frequency_score` captures alert density, not disaster outcomes.
 
-A planned refinement is to weight active FEMA declarations more heavily relative to watch/warning counts — so that a county with high alert frequency but zero declarations scores lower than one where events converted into real federal responses.
+A planned refinement is to weight active FEMA declarations more heavily relative to watch/warning counts — so a county with high alert frequency but zero declarations scores lower than one where events converted into a real federal response.
 
 ### Why is most of Texas green when it has hurricanes and tornadoes?
 
