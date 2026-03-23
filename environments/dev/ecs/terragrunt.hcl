@@ -89,7 +89,10 @@ inputs = {
           essential = true
           port_mappings = [{ containerPort = 8080, protocol = "tcp" }]
           environment = [
-            { name = "DATABASE_URL", value = "postgresql://prism@${dependency.rds.outputs.db_instance_address}:5432/prism" }
+            { name = "DB_HOST", value = dependency.rds.outputs.db_instance_address },
+            { name = "DB_PORT", value = "5432" },
+            { name = "DB_NAME", value = "prism" },
+            { name = "DB_USER", value = "prism" }
           ]
           secrets = [
             { name = "DB_PASSWORD", valueFrom = "${dependency.rds.outputs.db_instance_master_user_secret_arn}:password::" }
