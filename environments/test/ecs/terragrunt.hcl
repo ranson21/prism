@@ -126,12 +126,7 @@ inputs = {
           secrets = [
             { name = "DB_PASSWORD", valueFrom = "${dependency.rds.outputs.db_instance_master_user_secret_arn}:password::" }
           ]
-          linux_parameters = {
-            tmpfs = [{
-              container_path = "/app/artifacts"
-              size           = 512
-            }]
-          }
+          readonly_root_filesystem = false
         }
       }
 
