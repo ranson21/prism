@@ -37,8 +37,7 @@ dependency "sg" {
 dependency "rds" {
   config_path = "../rds"
   mock_outputs = {
-    db_instance_endpoint               = "prism-stable.abc123.us-gov-west-1.rds.amazonaws.com"
-    db_instance_port                   = 5432
+    db_instance_address                = "prism-stable.abc123.us-gov-west-1.rds.amazonaws.com"
     db_instance_master_user_secret_arn = "arn:aws-us-gov:secretsmanager:us-gov-west-1:123456789012:secret:rds!db-prism-stable-mock"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
@@ -90,10 +89,10 @@ inputs = {
           essential = true
           port_mappings = [{ containerPort = 8080, protocol = "tcp" }]
           environment = [
-            { name = "DATABASE_URL", value = "postgresql://prism@${dependency.rds.outputs.db_instance_endpoint}:5432/prism" }
+            { name = "DATABASE_URL", value = "postgresql://prism@${dependency.rds.outputs.db_instance_address}:5432/prism" }
           ]
           secrets = [
-            { name = "DB_PASSWORD", valueFrom = dependency.rds.outputs.db_instance_master_user_secret_arn }
+            { name = "DB_PASSWORD", valueFrom = "${dependency.rds.outputs.db_instance_master_user_secret_arn}:password::" }
           ]
         }
       }
@@ -121,11 +120,11 @@ inputs = {
           essential = true
           port_mappings = [{ containerPort = 8001, protocol = "tcp" }]
           environment = [
-            { name = "DATABASE_URL",       value = "postgresql://prism@${dependency.rds.outputs.db_instance_endpoint}:5432/prism" },
+            { name = "DATABASE_URL",       value = "postgresql://prism@${dependency.rds.outputs.db_instance_address}:5432/prism" },
             { name = "ARTIFACT_S3_BUCKET", value = dependency.s3.outputs.s3_bucket_id }
           ]
           secrets = [
-            { name = "DB_PASSWORD", valueFrom = dependency.rds.outputs.db_instance_master_user_secret_arn }
+            { name = "DB_PASSWORD", valueFrom = "${dependency.rds.outputs.db_instance_master_user_secret_arn}:password::" }
           ]
         }
       }

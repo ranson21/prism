@@ -4,7 +4,6 @@ Usage:
     python -m app.migrate
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -12,9 +11,11 @@ import psycopg
 
 
 def run() -> None:
-    dsn = os.environ.get("DATABASE_URL")
-    if not dsn:
-        print("ERROR: DATABASE_URL is not set", file=sys.stderr)
+    from app.db import _dsn
+    try:
+        dsn = _dsn()
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
     migrations_dir = Path(__file__).parent.parent / "migrations"
