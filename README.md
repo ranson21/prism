@@ -35,23 +35,23 @@ PRISM is a decision-support tool, not a deterministic predictor. Outputs are pro
   FEMA OpenFEMA · NWS API · USGS Earthquake Catalog · US Census ACS
 ```
 
-| Service | Language | Role |
-|---|---|---|
-| `apps/ui` | React + TypeScript | Dashboard, map heatmap, scenario UI |
-| `services/api` | Go (Gin) | REST API, query orchestration, rankings |
-| `services/ml-engine` | Python (FastAPI) | Data ingestion, feature engineering, scoring |
-| `environments/local` | Docker Compose | Local orchestration, PostgreSQL, migrations |
+| Service              | Language           | Role                                         |
+| -------------------- | ------------------ | -------------------------------------------- |
+| `apps/ui`            | React + TypeScript | Dashboard, map heatmap, scenario UI          |
+| `services/api`       | Go (Gin)           | REST API, query orchestration, rankings      |
+| `services/ml-engine` | Python (FastAPI)   | Data ingestion, feature engineering, scoring |
+| `environments/local` | Docker Compose     | Local orchestration, PostgreSQL, migrations  |
 
 ---
 
 ## Data Sources
 
-| Dataset | Source | Used For |
-|---|---|---|
-| Disaster declarations | [FEMA OpenFEMA API](https://www.fema.gov/about/openfema/api) | Disaster counts, major disaster flags |
-| Severe weather alerts | [NWS API](https://api.weather.gov) | Alert counts weighted by severity |
-| Earthquake events | [USGS Earthquake Catalog](https://earthquake.usgs.gov/fdsnws/event/1/) | Earthquake count, max magnitude |
-| Population & income | [US Census Bureau ACS](https://www.census.gov/data/developers/data-sets/acs-1year.html) | Population exposure, income vulnerability |
+| Dataset               | Source                                                                                  | Used For                                  |
+| --------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Disaster declarations | [FEMA OpenFEMA API](https://www.fema.gov/about/openfema/api)                            | Disaster counts, major disaster flags     |
+| Severe weather alerts | [NWS API](https://api.weather.gov)                                                      | Alert counts weighted by severity         |
+| Earthquake events     | [USGS Earthquake Catalog](https://earthquake.usgs.gov/fdsnws/event/1/)                  | Earthquake count, max magnitude           |
+| Population & income   | [US Census Bureau ACS](https://www.census.gov/data/developers/data-sets/acs-1year.html) | Population exposure, income vulnerability |
 
 All data is public and free to access. No proprietary feeds are required.
 
@@ -102,12 +102,12 @@ Copy `environments/local/.env.example` to `environments/local/.env` and set `DAT
 
 ## Key API Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/risk/summary` | Distribution of risk levels + top 5 counties |
-| `GET` | `/risk/rankings` | All counties ranked by risk score (paginated) |
-| `GET` | `/risk/explain/:fips` | Full score breakdown for one county |
-| `GET` | `/risk/history/:fips` | 90-day score history for one county |
+| Method | Path                  | Description                                     |
+| ------ | --------------------- | ----------------------------------------------- |
+| `GET`  | `/risk/summary`       | Distribution of risk levels + top 5 counties    |
+| `GET`  | `/risk/rankings`      | All counties ranked by risk score (paginated)   |
+| `GET`  | `/risk/explain/:fips` | Full score breakdown for one county             |
+| `GET`  | `/risk/history/:fips` | 90-day score history for one county             |
 | `POST` | `/scenarios/simulate` | Apply severity multiplier + resource allocation |
 
 ---
@@ -149,11 +149,11 @@ See [`docs/responsible_ai.md`](docs/responsible_ai.md) for full detail.
 
 PRISM deploys to AWS using Terragrunt with three environments:
 
-| Environment | Region | Notes |
-|---|---|---|
-| `dev` | `us-east-1` | Single-AZ, Fargate Spot, micro sizing |
-| `test` | `us-east-1` | Multi-AZ, on-demand Fargate, small sizing |
-| `stable` | `us-gov-west-1` | GovCloud, 3-AZ HA, FedRAMP Moderate aligned |
+| Environment | Region          | Notes                                       |
+| ----------- | --------------- | ------------------------------------------- |
+| `dev`       | `us-east-1`     | Single-AZ, Fargate Spot, micro sizing       |
+| `test`      | `us-east-1`     | Multi-AZ, on-demand Fargate, small sizing   |
+| `stable`    | `us-gov-west-1` | GovCloud, 3-AZ HA, FedRAMP Moderate aligned |
 
 ### Step 1 — Get your AWS credentials from the Console
 
@@ -287,4 +287,12 @@ prism/
 
 ---
 
-Built by Sky Solutions LLC
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 Maintainers
+
+- Please refer to each submodule's README for specific maintainer information
+- For overall repository issues, contact [Abigail Ranson](mailto:abby@abbyranson.com)
+
