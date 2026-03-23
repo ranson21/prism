@@ -2,120 +2,128 @@
 
 **Core narrative:** *"Where should we act right now — and why?"*
 
-Aim for 5 minutes end-to-end. Each scene has the URL to be on, the action to take, and the talking point to deliver.
+Aim for 5 minutes end-to-end. Read the quoted lines as written. Actions tell you exactly what to click or scroll to. Notes in *italics* are context for you — don't say them out loud.
 
 ---
 
-## Setup (Before You Start)
+## Before You Present — Technical Setup
 
-- Site open at `http://localhost` (port 80)
-- Dashboard ready at `http://localhost:3000` (open in a background tab)
-- All services running (`make docker-up`)
-- Do not pre-select any county or scenario
+**Have a technical team member do this before you walk in the room:**
+
+1. Start all services: `make docker-up` (takes about 30 seconds)
+2. Open two browser tabs:
+   - Tab 1: `http://localhost` — the landing site
+   - Tab 2: `http://localhost:3000` — the live dashboard
+3. On Tab 2, confirm the map has loaded and counties are color-coded
+4. Do not pre-select any county or scenario
+
+**If anything looks broken**, refresh the page and wait 10 seconds. If it's still broken, call in the technical team member.
 
 ---
 
-## Scene 0 — Open on the Site (30 seconds)
+## Scene 0 — Open on the Landing Site (30 seconds)
 
-**URL:** `http://localhost`
-
-**Action:** Let the site hero load. Don't click anything yet.
+**Switch to Tab 1.** Let the page load fully. Don't click anything yet.
 
 > "Before I open the live system, let me show you the problem we're solving."
 
-**Action:** Scroll slowly through the Problem section — three cards: Fragmented Data, Reactive Not Proactive, No Explainability.
+**Scroll slowly** through the three problem cards on the page.
 
-> "Emergency managers are pulling from dozens of disconnected systems — FEMA declarations, weather alerts, earthquake feeds — and losing critical hours assembling a picture. Decisions about where to send resources happen after the damage is done. And when a risk score does exist, nobody can explain what's driving it."
+> "Emergency managers are pulling from dozens of disconnected systems — FEMA disaster declarations, weather alerts, earthquake feeds — and losing critical hours assembling a picture. Decisions about where to send resources happen after the damage is done. And when a risk score does exist, nobody can explain what's driving it."
 
-**Action:** Scroll to the Solution section. Pause on the mock rankings table.
+**Scroll** to the Solution section. Pause on the mock rankings table.
 
-> "PRISM changes that. One platform. Every county. Explainable scores. This is what it looks like."
+> "PRISM changes that. One platform. Every county in the country. Scores you can explain. This is what it looks like."
 
-**Action:** Click **"Open Live Dashboard"** button.
+**Click** the **"Open Live Dashboard"** button.
 
 ---
 
 ## Scene 1 — The National Situation Board (1 minute)
 
-**URL:** `http://localhost:3000`
+*You are now on Tab 2 — the live dashboard.*
 
-**Action:** Let the map load fully. Point to the color-coded counties.
+**Let the map finish loading.** Point to the color-coded counties.
 
-> "This is a live risk ranking of all 3,220 US counties — green low, yellow moderate, orange elevated, red critical. Every county is scored, not just the ones that have had recent events."
+> "This is a live risk ranking of all 3,220 US counties — green is low risk, yellow moderate, orange elevated, red critical. Every single county is scored. Not just the ones that have had recent events."
 
-**Action:** Point to the summary bar distribution counts at the top.
+**Point to the summary numbers** across the top of the screen.
 
-> "Right now we have [X] critical counties and [X] elevated. That distribution updates every time we pull fresh data from FEMA, NWS, and USGS."
+> "Right now we have [read the number] critical counties and [read the number] elevated. That distribution updates every time we pull fresh data from federal disaster systems, the National Weather Service, and earthquake monitoring."
 
-**Action:** Point to the rankings table.
+**Point to the ranked list** on the side.
 
-> "The table gives you the ranked priority list. Highest risk at the top. Each row shows the score, the risk level, and the dominant factors. This is the prioritized list your EOC needs before a major weather event."
+> "The table gives you the prioritized action list. Highest risk at the top. Each row shows the score, the risk level, and the single biggest factor driving it. This is the briefing your Emergency Operations Center needs before a major weather event — and it takes seconds to generate."
 
 ---
 
 ## Scene 2 — Drill Into One County (1.5 minutes)
 
-**Action:** Click a critical (red) county on the map. The Explain panel opens.
+**Click any red county on the map.** The detail panel opens on the right.
 
-> "I clicked [County Name], [State]. Risk score [X] out of 100. Let me show you what's driving it."
+> "I clicked [say the county name shown]. Risk score [say the number] out of 100. Let me show you what's driving it."
 
-**Action:** Point to the top drivers bar chart.
+**Point to the bar chart** in the panel.
 
-> "Severe weather activity is the dominant driver — [N] active NWS alerts in the trailing 90 days. Hazard frequency is second, population exposure third. These aren't black-box outputs — every bar traces back to a specific public data source."
+> "Severe weather activity is the top driver — [say the number] active weather alerts in the last 90 days. Hazard frequency is second, population exposure third. These aren't black-box outputs — every bar traces directly back to a public data source that any agency can independently verify."
 
-**Action:** Point to the confidence band.
+**Point to the colored range bar** just below the score.
 
-> "The confidence band tells you how certain the model is. Narrow means the signals agree strongly. Wide means the inputs are pulling in different directions — treat it as a directional estimate and apply your local knowledge."
+> "This band shows how confident the system is in that score. A tight band means all the signals are pointing the same direction — high confidence. A wide band means the signals are mixed — treat it as a directional estimate and layer in your local knowledge."
 
-**Action:** Point to the K-Means tier badge next to the risk level.
+**Point to the tier label** next to the risk level. *It will say something like "Tier 4 — Elevated Multi-Hazard."*
 
-> "This county is in [Tier N — Label]. That's a peer group — counties with the same hazard profile nationally. Not just a high score in isolation."
+> "The tier label puts this county in context nationally. It means this county's overall hazard profile is similar to other high-risk counties across the country — not just a high score in isolation."
 
-**Action:** Click the **History** tab.
+**Click the History tab** in the panel.
 
-> "Six months of trend data. [County] has been [rising/holding/declining]. First score [X], current [Y] — a [+/-Z] point shift. This is an early warning signal. We can see which counties are accumulating risk before they make the news."
+> "Six months of trend data. This county has been [rising / holding / declining]. First score [X], current [Y] — a [say the change] point shift. This is the early warning signal. We can see which counties are accumulating risk before they make the news."
 
 ---
 
 ## Scene 3 — Scenario Simulation & Resource Pre-Positioning (1.5 minutes)
 
-**Action:** Click anywhere on the map to deselect. Focus on the Scenario Simulator panel.
+**Click anywhere on the map** to close the county panel. **Find the Scenario Simulator** panel.
 
-> "Now — what happens *before* a major event? PRISM includes a scenario simulator for pre-positioning decisions."
+> "Now — what happens before a major event strikes? PRISM includes a scenario simulator built specifically for pre-positioning decisions."
 
-**Action:** Click the **"Category 5 Hurricane"** preset.
+**Click the "Category 5 Hurricane" preset.**
 
-> "Category 5 hurricane — 3.5× severity applied to current baseline scores."
+> "Category 5 hurricane scenario. PRISM applies the expected severity increase across every county in the affected region."
 
-**Action:** Set the **Resource Units** slider to 50. Click **"Run Simulation."**
+**Set the Resource Units slider to 50. Click "Run Simulation."**
 
-**Action:** Scroll through the results list while talking.
+**Scroll through the results list** while talking.
 
-> "In under a second — [N] counties affected. Let me show you the pre-positioning output."
+> "In under a second — [N] counties affected. Here's the pre-positioning output."
 
-**Action:** Point to **DEPLOYED** badges (green).
+**Point to the green DEPLOYED badges.**
 
-> "PRISM allocated the 50 teams to the 50 highest-risk counties under this scenario. Green DEPLOYED badge — a team is assigned."
+> "Green means a resource team has been assigned. PRISM allocated the 50 teams to the 50 highest-risk counties under this scenario."
 
-**Action:** Point to **UNMET** badges (amber).
+**Point to the amber UNMET badges.**
 
-> "Amber UNMET — this county needs a resource but we've run out of capacity. That's your ask to leadership: here are the exact counties that still need coverage, and here's how many more teams it takes to close that gap. The briefing is already written."
+> "Amber UNMET means this county needs a resource but we've run out of capacity. That's not a failure — that's the briefing. Here are the exact counties still uncovered, and here is exactly how many more teams it takes to close that gap. The ask to leadership is already written."
 
 ---
 
-## Scene 4 — Back to the Site: The Adoption Story (30 seconds)
+## Scene 4 — The Adoption Story (45 seconds)
 
-**Action:** Switch back to `http://localhost` in the background tab. Scroll to the **How It Works** section.
+**Switch back to Tab 1** — the landing site. **Scroll to the How It Works section.**
 
-> "Everything you just saw runs on public data — FEMA, NWS, USGS, Census. No proprietary feeds, no black box. The scoring methodology follows the FEMA National Risk Index. Every score is auditable and traceable."
+> "Everything you just saw runs on public data — federal disaster declarations, the National Weather Service, USGS earthquake monitoring, Census demographics. No proprietary feeds. No black box. The scoring methodology is the same approach FEMA uses for its own National Risk Index."
 
-**Action:** Scroll to the **Explainability** carousel — let it cycle through a county card.
+**Scroll to the Explainability carousel** — let it cycle through a county card automatically.
 
-> "This is what your analysts see for any county in the country. Score, confidence, top drivers, trend — all in one view. Built for human judgment, not to replace it."
+> "This is what any analyst in your agency would see for any county in the country. Score, confidence range, top drivers, historical trend — all in one view. Built for human judgment, not to replace it."
 
-**Action:** Switch back to `http://localhost:3000`. Click **About / Agency Pilot** in the dashboard header.
+**Switch to Tab 2.** **Click "About / Agency Pilot"** in the dashboard header.
 
-> "The About panel shows the full adoption path — Phase 1 connecting to agency real-time feeds and pushing ranked alerts into EOC workflows, Phase 2 adding satellite imagery, infrastructure vulnerability modeling, and multi-hazard forecasting. The methodology and responsible AI commitments are fully documented."
+> "The adoption path is already designed. Phase 1 connects to your agency's real-time feeds and pushes ranked county alerts directly into your EOC workflow. Phase 2 adds satellite imagery, infrastructure vulnerability modeling, and forward-looking seasonal outlooks."
+
+**Close the About panel. Pause.**
+
+> "One more thing — this is not a prototype that needs six months to harden before it can go anywhere. The entire cloud infrastructure is defined as code. We deployed a production-grade AWS environment — load balancer, private database, container services, security controls — with a single command. On day one of an agency engagement, we can have a live instance running on FedRAMP-authorized government cloud infrastructure without writing a single line of new deployment code."
 
 ---
 
@@ -129,59 +137,76 @@ Aim for 5 minutes end-to-end. Each scene has the URL to be on, the action to tak
 
 | What | URL |
 |---|---|
-| Landing site (entry point) | `http://localhost` |
+| Landing site | `http://localhost` |
 | Live dashboard | `http://localhost:3000` |
-| ML Engine API | `http://localhost:8001/docs` |
 
 ---
 
 ## Handling Common Questions
 
 **"How current is the data?"**
-> "Ingestion pulls live from FEMA, NWS, and USGS on demand. In production we'd run that on a daily schedule — scores refreshed every morning before the ops briefing."
+> "We pull live from federal disaster systems, the National Weather Service, and USGS earthquake monitoring. In a production deployment that runs on a daily schedule — scores refreshed every morning before the ops briefing."
 
-**"Why not a machine learning prediction model?"**
-> "We evaluated a supervised classifier. FEMA declarations lag events by weeks to months — there aren't enough positive labels in a 90-day window to train a reliable model. The composite index approach is what FEMA itself uses for the National Risk Index. We do use K-Means clustering as a genuine ML layer for risk tier assignment."
+**"Is this actually using AI or machine learning?"**
+> "Yes — we use an unsupervised machine learning technique called clustering to group all 3,220 counties into five risk tiers based on their full hazard profile. On top of that, every score is built from a weighted composite of eight real data features — the same methodology FEMA uses for its National Risk Index."
+
+**"Why doesn't it just predict where the next disaster will happen?"**
+> "Because no system can do that reliably — and any system that claims to is misleading you. FEMA's own disaster declaration data lags the actual event by weeks or months, so there's no reliable ground truth to train a prediction model on. PRISM does something more honest and more useful: it shows you where the risk signals are highest right now, so you can act before the crisis, not after."
 
 **"What about territories — Puerto Rico, Guam?"**
-> "Current coverage is the 50 states. Adding territories is on the roadmap — it's a data availability question per connector, not an architecture change."
+> "Current coverage is the 50 states. Adding territories is on the roadmap — it's a data availability question, not an architecture change."
 
-**"How do you handle equity and bias?"**
-> "Income vulnerability is explicitly modeled as a risk amplifier — lower-income counties score higher to reflect reduced recovery capacity. It's documented in our Responsible AI section (`docs/responsible_ai.md`) and visible in the About panel."
+**"How do you handle fairness — are lower-income communities treated differently?"**
+> "Yes, intentionally. Lower income is explicitly built into the score as a risk amplifier — counties with less financial resilience rank higher, because they have less capacity to prepare, evacuate, and recover. It's visible in the model and documented in our Responsible AI commitments."
 
-**"Could this integrate with our existing EOC tool?"**
-> "Yes — the Go API exposes a clean REST interface. Any tool that can consume JSON can pull ranked county data and scenario outputs. Phase 1 of the agency pilot is exactly that integration. The architecture doc (`docs/architecture.md`) has the EOC webhook interface design."
+**"Could this work with our existing EOC tools?"**
+> "Yes — the system exposes a standard REST API. Any tool that can read a data feed can pull the ranked county list and scenario outputs. The architecture is already designed for that integration — the Phase 1 roadmap is exactly that connection."
 
-**"Can I see the methodology in detail?"**
-> "Yes — `docs/ml_pipeline.md` covers the full feature engineering, composite index weights, K-Means tier assignment, and confidence band derivation. `docs/data_pipeline.md` covers the connector architecture and normalization layer."
+**"How fast could you actually deploy this for a real agency?"**
+> "The infrastructure is already cloud-native and defined entirely as code — Terraform and Terragrunt manage every resource. We've already deployed a working AWS environment as part of this project. Deploying to a FedRAMP-authorized government cloud is the same process with different environment variables. It's a matter of days, not months."
 
 ---
 
-## Key Numbers
+## Key Numbers to Know
 
-| Metric | Value |
+| What | Number |
 |---|---|
-| Counties scored | 3,220 |
-| Data sources | 4 (FEMA, NWS, USGS, Census) |
-| Features per county | 8 |
-| Risk tiers (K-Means) | 5 |
-| Scenario runtime | < 1 second |
-| History depth (demo) | 6 months |
-| Resource units (demo) | 50 |
-| Site port | 80 |
-| Dashboard port | 3000 |
+| Counties scored | 3,220 (all US counties) |
+| Data sources | 4 — FEMA, National Weather Service, USGS, US Census |
+| Risk factors tracked per county | 8 |
+| Risk tiers | 5 (Minimal → Low → Moderate → Elevated → High-Risk) |
+| Scenario runtime | Under 1 second |
+| Trend history shown | 6 months |
+
+---
+
+## Jargon Cheat Sheet
+
+If a judge uses one of these terms, here's the plain-language version:
+
+| Term | Say this instead |
+|---|---|
+| Composite index | A weighted score built from multiple real data inputs |
+| K-Means clustering | A machine learning technique that groups similar counties together |
+| Confidence band | The range bar showing how certain the score is |
+| Risk tier | The peer group label — counties with similar hazard profiles |
+| Feature | A specific data input used to compute the score (e.g., severe weather alert count) |
+| Infrastructure as Code (IaC) | The entire cloud setup is scripted — deployable with one command |
+| FedRAMP | The US government's security certification for cloud software |
+| ECS / Fargate | AWS managed container hosting — no servers to manage |
+| REST API | A standard interface other software can connect to |
 
 ---
 
 ## Documentation Reference (for Judges)
 
-All technical documentation lives in `docs/`:
+Full technical documentation is in the `docs/` folder:
 
 | Document | What it covers |
 |---|---|
-| [`docs/architecture.md`](architecture.md) | 3-tier architecture diagram, data flow, service responsibilities, EOC integration design, cloud deployment path |
-| [`docs/ml_pipeline.md`](ml_pipeline.md) | Feature engineering, composite index weights, K-Means methodology, confidence band derivation, "Why Not a Classifier?" |
-| [`docs/data_pipeline.md`](data_pipeline.md) | Connector architecture, normalization, FIPS alignment, real-time streaming expansion path |
-| [`docs/responsible_ai.md`](responsible_ai.md) | Five responsible AI commitments, data source limitations, model auditability, human-in-the-loop requirement |
-| [`docs/agency_pilot_brief.md`](agency_pilot_brief.md) | 5-minute executive briefing, Phase 1–2 adoption roadmap, technical credentials |
-| [`SETUP.md`](../SETUP.md) | Local development setup, AWS first deployment, ML pipeline execution |
+| [`docs/architecture.md`](architecture.md) | System diagram, data flow, cloud deployment path, EOC integration design |
+| [`docs/ml_pipeline.md`](ml_pipeline.md) | Scoring methodology, feature weights, risk tier assignment, confidence bands |
+| [`docs/data_pipeline.md`](data_pipeline.md) | Data connector architecture, normalization, expansion path |
+| [`docs/responsible_ai.md`](responsible_ai.md) | Responsible AI commitments, data limitations, human-in-the-loop policy |
+| [`docs/agency_pilot_brief.md`](agency_pilot_brief.md) | Executive briefing, Phase 1–2 adoption roadmap |
+| [`SETUP.md`](../SETUP.md) | Local setup and AWS deployment instructions |
