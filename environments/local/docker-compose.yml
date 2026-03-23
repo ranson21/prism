@@ -45,7 +45,11 @@ services:
     container_name: prism-api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-prism}:${POSTGRES_PASSWORD:-prism_dev_secret}@postgres:5432/${POSTGRES_DB:-prism}
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-prism}
+      DB_USER: ${POSTGRES_USER:-prism}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-prism_dev_secret}
       ML_ENGINE_URL: http://ml-engine:8001
     ports:
       - "8080:8080"
@@ -55,8 +59,8 @@ services:
 
   site:
     build:
-      context: ../../apps/site
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/site/Dockerfile
       args:
         VITE_DASHBOARD_URL: ${VITE_DASHBOARD_URL:-http://localhost:3000}
     container_name: prism-site
