@@ -1,10 +1,24 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import { Shield, BarChart3, Map, Zap, CheckCircle, AlertTriangle, TrendingUp, Database, ChevronRight, ChevronLeft, Clock } from 'lucide-react'
 import prismLogo from './assets/prism_logo.svg'
+import DocsPage from './pages/DocsPage'
 
 const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL ?? 'http://localhost:3000'
 
 export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/docs" element={<DocsPage />} />
+        <Route path="/docs/:slug" element={<DocsPage />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+function LandingPage() {
   return (
     <div className="min-h-screen bg-[#0F172A] text-slate-100">
       <Nav />
@@ -33,6 +47,7 @@ function Nav() {
         <div className="flex items-center gap-6">
           <a href="#how-it-works" className="text-sm text-slate-400 hover:text-slate-200 transition-colors cursor-pointer">How It Works</a>
           <a href="#explainability" className="text-sm text-slate-400 hover:text-slate-200 transition-colors cursor-pointer">Explainability</a>
+          <Link to="/docs" className="text-sm text-slate-400 hover:text-slate-200 transition-colors">Docs</Link>
           <a
             href={DASHBOARD_URL}
             target="_blank"
@@ -572,7 +587,7 @@ function Footer() {
           <span className="text-sm font-semibold">PRISM</span>
           <span className="text-slate-600 text-sm">· Prioritization of Risk &amp; Incident Support Model</span>
         </div>
-        <p className="text-xs text-slate-600">Powered by Sky Solutions LLC · Decision-support only, not a guarantee of outcomes.</p>
+        <p className="text-xs text-slate-600">Decision-support only, not a guarantee of outcomes. · <Link to="/docs" className="hover:text-slate-400 transition-colors">Documentation</Link></p>
       </div>
     </footer>
   )
