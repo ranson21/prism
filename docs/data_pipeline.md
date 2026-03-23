@@ -8,7 +8,7 @@ The PRISM data pipeline is a modular ingestion and transformation system that co
 External APIs          Ingestion Connectors        Normalization
 ─────────────          ────────────────────        ─────────────
 FEMA OpenFEMA    ──►   FEMAConnector          ──►
-NWS Alerts       ──►   NWSConnector           ──►   datasets.raw_events
+NOAA/NWS Alerts  ──►   NOAAConnector          ──►   datasets.raw_events
 USGS Earthquakes ──►   USGSConnector          ──►   (deduplicated, FIPS-aligned)
                                                            │
                                                            ▼
@@ -29,7 +29,7 @@ All connectors implement a common async base:
 
 ```python
 class BaseConnector:
-    source_key: str           # "fema", "nws", "usgs"
+    source_key: str           # "fema", "noaa", "usgs"
     async def fetch(self, since: datetime | None) -> list[RawEvent]
 ```
 
@@ -43,14 +43,14 @@ Each connector is responsible for:
 | Connector | Source | Event Types | Key Fields |
 |-----------|--------|-------------|------------|
 | `FEMAConnector` | api.fema.gov | Disaster declarations | declaration type, incident type, state+county FIPS |
-| `NWSConnector` | api.weather.gov | Severe weather alerts | event type, severity (minor/moderate/severe/extreme), affected zone → FIPS |
+| `NOAAConnector` | api.weather.gov (NOAA / National Weather Service) | Severe weather alerts | event type, severity (minor/moderate/severe/extreme), affected zone → FIPS |
 | `USGSConnector` | earthquake.usgs.gov | Earthquake catalog | magnitude, depth, lat/lon → nearest county FIPS |
 
 ### Canonical Event Schema (`datasets.raw_events`)
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `source` | TEXT | Connector key: `fema`, `nws`, `usgs` |
+| `source` | TEXT | Connector key: `fema`, `noaa`, `usgs` |
 | `event_type` | TEXT | Source-specific event classification |
 | `county_fips` | TEXT | 5-digit FIPS code (2-digit state + 3-digit county) |
 | `severity` | NUMERIC | Normalized 0–1 severity estimate |
@@ -71,7 +71,7 @@ The ingestion pipeline deduplicates on `(source, external_id)` using an `ON CONF
 Every event is aligned to a county FIPS code before storage:
 
 - **FEMA**: declarations include state FIPS + county FIPS directly
-- **NWS**: alerts reference NWS forecast zones — mapped to county via a zone → FIPS lookup table seeded from Census data
+- **NOAA / NWS**: alerts reference NWS forecast zones — mapped to county via a zone → FIPS lookup table seeded from Census data
 - **USGS**: earthquake coordinates are point data — mapped to the containing county polygon using a lat/lon → FIPS spatial lookup
 
 All 3,220 counties in `geography.counties` are populated by the county seeder (`app.geography.seed_counties`) from the US Census Bureau TIGER dataset.
@@ -82,7 +82,7 @@ Each source uses different severity scales. The pipeline normalizes to a `[0, 1]
 
 | Source | Raw Scale | Normalization |
 |--------|-----------|---------------|
-| NWS | minor / moderate / severe / extreme | 0.25 / 0.5 / 0.75 / 1.0 |
+| NOAA / NWS | minor / moderate / severe / extreme | 0.25 / 0.5 / 0.75 / 1.0 |
 | USGS | Richter magnitude | `min(magnitude / 8.0, 1.0)` |
 | FEMA | Declaration type (EM / DR / FM) | 0.5 / 1.0 / 0.75 |
 
@@ -131,7 +131,7 @@ make aws-seed-data ENV=dev    # runs full pipeline via ECS Exec (no public DB ac
 
 | Step | Frequency | Rationale |
 |------|-----------|-----------|
-| Ingest | Daily | FEMA/NWS/USGS publish updates daily |
+| Ingest | Daily | FEMA/NOAA/USGS publish updates daily |
 | Features | Daily | Rolling window shifts with each new day |
 | Score | Daily | Keeps risk scores current |
 | Train | Weekly | Re-fitting on a full week of fresh data is sufficient |
@@ -142,17 +142,17 @@ make aws-seed-data ENV=dev    # runs full pipeline via ECS Exec (no public DB ac
 
 ### Phase 1 — Real-Time Weather Feed Ingestion
 
-The current `NWSConnector` polls the NWS REST API on a configurable schedule (incremental by `effective` date). The hook point for upgrading to a streaming feed is the `BaseConnector.fetch()` method — the interface is already async.
+The current `NOAAConnector` polls the NOAA / NWS REST API on a configurable schedule (incremental by `effective` date). The hook point for upgrading to a streaming feed is the `BaseConnector.fetch()` method — the interface is already async.
 
 **Planned replacement:**
 
 ```
-NWS CAP Alert Feed (ATOM/RSS) → Streaming ingest worker
+NOAA / NWS CAP Alert Feed (ATOM/RSS) → Streaming ingest worker
   └─► Kafka / SQS topic: raw-alerts
          └─► Alert consumer → deduplicate → datasets.raw_events
 ```
 
-NWS publishes the [Common Alerting Protocol (CAP)](https://www.weather.gov/media/documentation/docs/NWS_CAP_v12.pdf) atom feed at `https://alerts.weather.gov/cap/us.php?x=1` with updates every 1–2 minutes. A streaming consumer would replace the batch polling connector and drive near-real-time risk re-scoring during active severe weather events.
+NOAA (via NWS) publishes the [Common Alerting Protocol (CAP)](https://www.weather.gov/media/documentation/docs/NWS_CAP_v12.pdf) atom feed at `https://alerts.weather.gov/cap/us.php?x=1` with updates every 1–2 minutes. A streaming consumer would replace the batch polling connector and drive near-real-time risk re-scoring during active severe weather events.
 
 **What changes:**
 - Add an async streaming worker alongside the existing connector

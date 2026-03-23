@@ -8,13 +8,13 @@ PRISM is built around five responsible AI commitments that apply to every score,
 
 ## 1. Public Data Only
 
-**What we use**: FEMA OpenFEMA API, NWS Weather Alert API, USGS Earthquake Catalog, US Census Bureau ACS.
+**What we use**: FEMA OpenFEMA API, NOAA / NWS Weather Alert API, USGS Earthquake Catalog, US Census Bureau ACS.
 
 **What we do not use**: proprietary intelligence feeds, real-time 911 call data, social media signals, law enforcement data, or any non-public source.
 
 Every data source is documented, freely accessible, and independently verifiable. Any agency or researcher can reproduce PRISM's inputs by querying the same public APIs.
 
-**Limitation**: Public datasets have their own quality issues. FEMA disaster declarations lag the event by days to months. NWS alerts may duplicate across overlapping zones. USGS earthquake data is highly reliable but does not cover all geologic hazard types. PRISM acknowledges these limitations rather than treating the data as ground truth.
+**Limitation**: Public datasets have their own quality issues. FEMA disaster declarations lag the event by days to months. NOAA weather alerts may duplicate across overlapping zones. USGS earthquake data is highly reliable but does not cover all geologic hazard types. PRISM acknowledges these limitations rather than treating the data as ground truth.
 
 ---
 
@@ -83,7 +83,7 @@ Lower-income counties receive a higher vulnerability score, reflecting reduced r
 | Source | Known Limitations |
 |---|---|
 | FEMA Disaster Declarations | Lag of days to months post-event; only declared disasters are included, not near-misses |
-| NWS Alerts | Zone-based alerts may over-count for counties covered by multiple zones; alert threshold varies by local office |
+| NOAA / NWS Alerts | Zone-based alerts may over-count for counties covered by multiple zones; alert threshold varies by local office |
 | USGS Earthquakes | Completeness varies by region; offshore events mapped to nearest county may be imprecise |
 | Census ACS | 1-year estimates unavailable for small counties; data is 1–5 years old |
 

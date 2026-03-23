@@ -16,7 +16,7 @@ Features are computed over a rolling **90-day window** from `datasets.raw_events
 
 | Feature | Source | Description |
 |---|---|---|
-| `severe_weather_count` | NWS | Alert count weighted by severity tier (minor=1 → extreme=4) |
+| `severe_weather_count` | NOAA (NWS) | Alert count weighted by severity tier (minor=1 → extreme=4) |
 | `earthquake_count` | USGS | Number of earthquake events in the county region |
 | `max_earthquake_magnitude` | USGS | Maximum magnitude of any earthquake in the window |
 | `hazard_frequency_score` | All sources | Composite rate of multi-source hazard events per capita |

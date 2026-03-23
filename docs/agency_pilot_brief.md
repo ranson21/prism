@@ -42,7 +42,7 @@ PRISM does not predict that a disaster *will* happen. It identifies where observ
 Public Data               PRISM                    Decision-Makers
 ──────────────            ──────────────────────   ────────────────────────
 FEMA Declarations   →     Ingest + Normalize   →   Ranked county map
-NWS Weather Alerts  →     Feature Engineering  →   Explainability panel
+NOAA Weather Alerts →     Feature Engineering  →   Explainability panel
 USGS Earthquakes    →     Composite Index      →   "Why is this county high?"
 Census Population   →     K-Means Clustering   →   Scenario simulator
                           Confidence Bands     →   "What if a hurricane hits?"
@@ -101,7 +101,7 @@ Click "About / Agency Pilot" in the dashboard header to close with the Phase 1 �
 ## Path to Agency Pilot
 
 ### Phase 1 — Agency Integration (6–12 months)
-- Connect to agency real-time weather feeds (NWS WebSocket / streaming API)
+- Connect to agency real-time weather feeds (NOAA / NWS WebSocket / streaming API)
 - Push ranked county alerts into existing EOC workflow tools (push API or webhook)
 - Add state and regional filtering for state emergency operations centers
 - Deploy on FedRAMP-authorized cloud infrastructure (AWS GovCloud / Azure Government)

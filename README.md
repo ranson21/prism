@@ -8,7 +8,7 @@ An AI-powered disaster risk intelligence platform that helps emergency planners 
 
 ## What PRISM Does
 
-PRISM ingests public data from FEMA, NWS, USGS, and the US Census Bureau and produces:
+PRISM ingests public data from FEMA, NOAA, USGS, and the US Census Bureau and produces:
 
 - **0–100 risk scores** for all 3,220 US counties, updated on demand
 - **Ranked county list** sorted by risk level with top risk drivers per county
@@ -32,7 +32,7 @@ PRISM is a decision-support tool, not a deterministic predictor. Outputs are pro
               ↑  psycopg3
   [ Python ML Engine (FastAPI) — port 8001 ]
               ↑
-  FEMA OpenFEMA · NWS API · USGS Earthquake Catalog · US Census ACS
+  FEMA OpenFEMA · NOAA Weather API · USGS Earthquake Catalog · US Census ACS
 ```
 
 | Service              | Language           | Role                                         |
@@ -49,7 +49,7 @@ PRISM is a decision-support tool, not a deterministic predictor. Outputs are pro
 | Dataset               | Source                                                                                  | Used For                                  |
 | --------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------- |
 | Disaster declarations | [FEMA OpenFEMA API](https://www.fema.gov/about/openfema/api)                            | Disaster counts, major disaster flags     |
-| Severe weather alerts | [NWS API](https://api.weather.gov)                                                      | Alert counts weighted by severity         |
+| Severe weather alerts | [NOAA / National Weather Service API](https://api.weather.gov)                          | Alert counts weighted by severity         |
 | Earthquake events     | [USGS Earthquake Catalog](https://earthquake.usgs.gov/fdsnws/event/1/)                  | Earthquake count, max magnitude           |
 | Population & income   | [US Census Bureau ACS](https://www.census.gov/data/developers/data-sets/acs-1year.html) | Population exposure, income vulnerability |
 
@@ -72,7 +72,7 @@ make docker-up
 open http://localhost:3000
 
 # 4. (Optional) Trigger a fresh data run
-make ingest    # pull latest FEMA/NWS/USGS events
+make ingest    # pull latest FEMA/NOAA/USGS events
 make features  # compute county feature vectors
 make train     # fit the risk index model
 make score     # score all 3,220 counties
@@ -202,21 +202,13 @@ Override the default names if needed:
 make aws-bootstrap BUCKET=my-bucket TABLE=my-lock-table
 ```
 
-### Step 5 — Patch the account ID placeholder
-
-ECS image URIs contain a `ACCOUNT_ID` placeholder. Replace it with your real account ID:
-
-```bash
-make aws-patch-account
-```
-
-### Step 6 — Plan (preview without making changes)
+### Step 5 — Plan (preview without making changes)
 
 ```bash
 make infra-plan-dev
 ```
 
-### Step 7 — Apply the dev environment
+### Step 6 — Apply the dev environment
 
 Applies resources in dependency order (vpc → s3/ecr → rds → alb → waf → ecs):
 
@@ -224,13 +216,13 @@ Applies resources in dependency order (vpc → s3/ecr → rds → alb → waf �
 make infra-apply-dev
 ```
 
-### Step 8 — Push container images to ECR
+### Step 7 — Push container images to ECR
 
 ```bash
 make ecr-push-dev
 ```
 
-### Step 9 — Get the load balancer URL
+### Step 8 — Get the load balancer URL
 
 ```bash
 aws elbv2 describe-load-balancers \
