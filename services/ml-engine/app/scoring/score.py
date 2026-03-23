@@ -207,6 +207,7 @@ async def _load_features(conn, window_days: int) -> pd.DataFrame:
     cur = await conn.execute(
         """
         SELECT fips_code,
+               major_disaster_count,
                severe_weather_count,
                earthquake_count,
                COALESCE(max_earthquake_magnitude, 0)  AS max_earthquake_magnitude,
@@ -214,8 +215,7 @@ async def _load_features(conn, window_days: int) -> pd.DataFrame:
                population_exposure,
                COALESCE(economic_exposure, 0)         AS economic_exposure,
                COALESCE(log_population, 0)            AS log_population,
-               COALESCE(income_vulnerability, 0.5)    AS income_vulnerability,
-               major_disaster_count
+               COALESCE(income_vulnerability, 0.5)    AS income_vulnerability
         FROM risk.county_features
         WHERE window_days = %s
           AND feature_date = (

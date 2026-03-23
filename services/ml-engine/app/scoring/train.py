@@ -36,11 +36,19 @@ log = logging.getLogger(__name__)
 ARTIFACTS_DIR = Path(__file__).parent.parent.parent / "artifacts"
 ARTIFACTS_DIR.mkdir(exist_ok=True)
 
-# Features fed to the model — disaster counts are excluded to avoid pure circularity.
-# Major disaster count is used only as the target.
-# log_population and income_vulnerability are standalone structural features that
-# differentiate counties even when no active events are present.
+# Features fed to the model.
+#
+# major_disaster_count: included as a feature (not just a label) because a
+# recent FEMA declaration is the single strongest signal that an area faces
+# conditions warranting a major disaster response.  Weighting it highly
+# surfaces counties where declarations have already occurred or are imminent,
+# which is directly what decision-makers act on.
+#
+# income_vulnerability: retained at low weight as a secondary equity signal
+# (vulnerable populations recover slower), but is no longer a primary driver
+# so it cannot inflate rural-poverty counties above dense urban ones.
 FEATURE_COLUMNS = [
+    "major_disaster_count",
     "severe_weather_count",
     "earthquake_count",
     "max_earthquake_magnitude",
@@ -51,18 +59,30 @@ FEATURE_COLUMNS = [
     "income_vulnerability",
 ]
 
-# Fallback weights used when training data is insufficient.
-# Weights sum to 1.0. Event-based features are weighted higher when events exist;
-# structural features ensure all counties receive a meaningful baseline score.
+# Weights sum to 1.0.
+#
+# Design rationale vs. previous version:
+#   - major_disaster_count raised to 0.22: FEMA declarations are the ground
+#     truth for "this county needed a major response."  Using them as a
+#     feature (not just a label) anchors scores to real outcomes.
+#   - population_exposure raised to 0.20: a hazard over 2 million people is
+#     categorically different from the same hazard over 20,000 people.
+#   - severe_weather_count reduced to 0.10: raw NOAA alert counts are
+#     over-represented in states with dense tornado-watch grids (MS, AL, IN)
+#     relative to actual disaster impact.
+#   - income_vulnerability reduced to 0.03: valid equity signal but must not
+#     dominate; high poverty in a low-population county should not outrank a
+#     dense metro with moderate poverty and 10× the exposure.
 COMPOSITE_WEIGHTS = {
-    "severe_weather_count":      0.22,
-    "earthquake_count":          0.10,
-    "max_earthquake_magnitude":  0.14,
-    "hazard_frequency_score":    0.18,
-    "population_exposure":       0.08,
-    "economic_exposure":         0.08,
-    "log_population":            0.12,
-    "income_vulnerability":      0.08,
+    "major_disaster_count":      0.22,
+    "severe_weather_count":      0.10,
+    "earthquake_count":          0.08,
+    "max_earthquake_magnitude":  0.10,
+    "hazard_frequency_score":    0.12,
+    "population_exposure":       0.20,
+    "economic_exposure":         0.10,
+    "log_population":            0.05,
+    "income_vulnerability":      0.03,
 }
 
 async def train_model(window_days: int = 90) -> str:
@@ -166,7 +186,6 @@ async def _load_features(conn, window_days: int) -> pd.DataFrame:
         """
         SELECT
             f.fips_code,
-            f.disaster_count,
             f.major_disaster_count,
             f.severe_weather_count,
             f.earthquake_count,
