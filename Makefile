@@ -12,7 +12,7 @@ export
         infra-plan-test infra-apply-test infra-destroy-test \
         ecr-login ecr-push-dev ecr-push-test \
         deploy-static-dev deploy-static-test \
-        aws-db-migrate aws-seed-data aws-alb-url aws-url
+        aws-db-migrate aws-seed-data aws-alb-url aws-s3-site-url aws-url
 
 bootstrap: bootstrap-ml bootstrap-api bootstrap-web
 
@@ -274,14 +274,25 @@ ecr-push-test: ecr-login
 # site → uploaded to bucket root (serves index.html at /)
 # ui  → uploaded to bucket under /app/ prefix (serves at /app/)
 deploy-static-dev:
-	$(eval ENV    ?= dev)
-	$(eval REGION ?= us-east-1)
-	$(eval BUCKET  = $(shell cd environments/$(ENV)/cloudfront && terragrunt output -raw static_bucket_name --terragrunt-non-interactive 2>/dev/null))
-	$(eval CF_ID   = $(shell cd environments/$(ENV)/cloudfront && terragrunt output -raw cloudfront_distribution_id --terragrunt-non-interactive 2>/dev/null))
+	$(eval ENV       ?= dev)
+	$(eval REGION    ?= us-east-1)
+	$(eval ACCOUNT_ID = $(shell aws sts get-caller-identity --query Account --output text))
+	$(eval BUCKET     = prism-$(ENV)-static-$(ACCOUNT_ID))
+	$(eval ALB_URL    = $(shell aws elbv2 describe-load-balancers \
+	                     --query "LoadBalancers[?contains(LoadBalancerName,'prism-$(ENV)')].DNSName" \
+	                     --output text --region $(REGION)))
+	$(eval CF_ID      = $(shell cd environments/$(ENV)/cloudfront && terragrunt output -raw cloudfront_distribution_id --terragrunt-non-interactive 2>/dev/null))
+	@echo "→ Ensuring S3 static website bucket: $(BUCKET)"
+	@aws s3 mb s3://$(BUCKET) --region $(REGION) 2>/dev/null || true
+	@aws s3api put-public-access-block --bucket $(BUCKET) \
+	  --public-access-block-configuration BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false
+	@aws s3api put-bucket-policy --bucket $(BUCKET) --policy \
+	  "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":\"*\",\"Action\":\"s3:GetObject\",\"Resource\":\"arn:aws:s3:::$(BUCKET)/*\"}]}"
+	@aws s3 website s3://$(BUCKET) --index-document index.html --error-document index.html
 	@echo "→ Building site..."
-	cd apps/site && VITE_DASHBOARD_URL=/app npm run build
-	@echo "→ Building UI..."
-	cd apps/ui  && npm run build -- --base=/app/
+	cd apps/site && VITE_DASHBOARD_URL=http://$(BUCKET).s3-website-$(REGION).amazonaws.com/app npm run build
+	@echo "→ Building UI (API: http://$(ALB_URL))..."
+	cd apps/ui && VITE_API_URL=http://$(ALB_URL) npm run build -- --base=/app/
 	@echo "→ Uploading site to s3://$(BUCKET)/..."
 	aws s3 sync apps/site/dist/ s3://$(BUCKET)/ --delete --region $(REGION)
 	@echo "→ Uploading UI to s3://$(BUCKET)/app/..."
@@ -289,10 +300,11 @@ deploy-static-dev:
 	@if [ -n "$(CF_ID)" ]; then \
 	  echo "→ Invalidating CloudFront cache..."; \
 	  aws cloudfront create-invalidation --distribution-id $(CF_ID) --paths "/*" --region $(REGION); \
-	else \
-	  echo "→ Skipping invalidation (CloudFront not yet deployed)"; \
 	fi
+	@echo ""
 	@echo "✓ Static deploy complete"
+	@echo "  Landing site: http://$(BUCKET).s3-website-$(REGION).amazonaws.com"
+	@echo "  Dashboard:    http://$(BUCKET).s3-website-$(REGION).amazonaws.com/app"
 
 deploy-static-test:
 	$(eval ENV    ?= test)
@@ -362,6 +374,14 @@ aws-alb-url:
 	@echo "http://$$(aws elbv2 describe-load-balancers \
 	  --query \"LoadBalancers[?contains(LoadBalancerName,'prism-$(ENV)')].DNSName\" \
 	  --output text --region $(REGION))"
+
+# Print the S3 static website URL (available before CloudFront)
+aws-s3-site-url:
+	$(eval ENV       ?= dev)
+	$(eval REGION    ?= us-east-1)
+	$(eval ACCOUNT_ID = $(shell aws sts get-caller-identity --query Account --output text))
+	@echo "Landing site: http://prism-$(ENV)-static-$(ACCOUNT_ID).s3-website-$(REGION).amazonaws.com"
+	@echo "Dashboard:    http://prism-$(ENV)-static-$(ACCOUNT_ID).s3-website-$(REGION).amazonaws.com/app"
 
 # Print the shareable CloudFront HTTPS URL for an environment
 aws-url:

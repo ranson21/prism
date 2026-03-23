@@ -256,11 +256,19 @@ The full pipeline takes 5–15 minutes depending on external API response times.
 make deploy-static-dev
 ```
 
-Builds the landing site and dashboard, uploads both to S3:
+This creates a public S3 static website bucket (`prism-dev-static-<account-id>`) if it doesn't exist, builds both apps, and uploads them:
 - Landing site → `s3://prism-dev-static-<account-id>/`
 - Dashboard → `s3://prism-dev-static-<account-id>/app/`
 
-If CloudFront is deployed, the cache is automatically invalidated. If not yet deployed, this step completes successfully and the files will be served once CloudFront is available.
+The UI is built with the ALB URL as `VITE_API_URL` so API calls work directly against the load balancer — no CloudFront required to serve a working demo.
+
+Get the URLs:
+
+```bash
+make aws-s3-site-url
+```
+
+If CloudFront is deployed, the cache is automatically invalidated. Once CloudFront is active, it routes traffic through its own domain and the S3 bucket continues to serve as the origin.
 
 ### Verify the deployment
 

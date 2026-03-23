@@ -101,7 +101,7 @@ export interface SimulateResponse {
 
 export const prismApi = createApi({
   reducerPath: 'prismApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: fetchBaseQuery({ baseUrl: `${import.meta.env.VITE_API_URL ?? ''}/api` }),
   endpoints: (builder) => ({
     getSummary: builder.query<SummaryResponse, void>({
       query: () => '/risk/summary',
