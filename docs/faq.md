@@ -74,6 +74,36 @@ This is a feature, not a bug: it mirrors how real resource allocation works. A m
 
 ---
 
+## Geographic Patterns
+
+### Why is so much of Mississippi, Alabama, Tennessee, and Kentucky showing as critical?
+
+This is real data, not a model artifact — but it needs context.
+
+These states sit in **"Dixie Alley"**, a severe weather corridor that actually produces more tornado fatalities annually than the Great Plains. NOAA issues an extraordinary volume of tornado watches, severe thunderstorm warnings, and flash flood alerts here. In the current data window, Mississippi has zero low-risk counties and 61% critical — that reflects genuine NOAA alert density, not a scoring mistake.
+
+The honest limitation is that PRISM scores **alert frequency, not confirmed impact**. A county can receive 31 tornado watches in 90 days with zero confirmed touchdowns. `hazard_frequency_score` captures how often NOAA is issuing alerts for a county, not whether those events materialized into disasters or declarations.
+
+A planned refinement is to weight active FEMA declarations more heavily relative to watch/warning counts — so that a county with high alert frequency but zero declarations scores lower than one where events converted into real federal responses.
+
+### Why is most of Texas green when it has hurricanes and tornadoes?
+
+**Houston (Harris County) is correctly flagged critical** — score 87, driven by its massive population exposure. The broader Texas greenness reflects that most of the state's 254 counties are geographically large, arid, or semi-arid with low NOAA alert activity in the current 90-day window. West Texas is desert. South Texas is dry. Most of the Panhandle is sparsely populated.
+
+The more important point: **this is a snapshot, not a permanent state.** During hurricane season, Gulf Coast Texas counties would spike dramatically as National Hurricane Center watches are issued. The model would activate correctly in real-time — a quiet window in February looks calm because it was calm.
+
+### Why is Oregon all green? The Cascadia Subduction Zone is one of the biggest earthquake risks in North America.
+
+This is the most important limitation to acknowledge directly.
+
+Every Oregon county scores low — Portland, Eugene, the entire coast. Lane County (Eugene) shows zero severe weather events, zero earthquake events, zero hazard frequency in the current window. The Cascadia Subduction Zone is capable of a M9.0 event that hasn't occurred in centuries, and PRISM gives it no credit for that risk.
+
+This is the **"quiet hazard" problem**: PRISM scores current-conditions activity. If nothing has happened recently, the score is low regardless of structural geological risk. This is a genuine design limitation, not something fixed by reweighting.
+
+The honest framing: PRISM is designed to answer *"where are conditions active right now"* — not *"where is long-run structural risk highest."* That is FEMA's National Risk Index's job. PRISM is built to complement structural assessments, not replace them. In the roadmap, incorporating USGS probabilistic seismic hazard maps as a permanent baseline feature layer would address the quiet-hazard gap for Oregon, the Pacific Northwest, and the New Madrid Seismic Zone.
+
+---
+
 ## Data & Methodology
 
 ### Where does the data come from?
