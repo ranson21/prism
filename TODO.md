@@ -14,7 +14,7 @@
 - [x] Ingestion pipeline (deduplicate, write to raw_events, run logging)
 - [x] County seeder (Census Bureau → geography.counties)
 - [x] Feature engineering (`raw_events` → `risk.county_features`)
-- [x] ML model training (random forest baseline → `risk.model_versions`)
+- [x] ML model training (composite index + K-Means → `risk.model_versions`)
 - [x] Risk scoring (`county_features` → `risk.scores` with top_drivers)
 - [x] `POST /score` endpoint to trigger feature + score run
 
@@ -38,7 +38,7 @@
 ## Prompt Compliance Gaps
 - [x] **Economic impact proxy** — Census ACS `B19013_001E` median household income fetched in seed_counties → stored in `geography.counties.median_household_income` → `economic_exposure = (income_thousands) × severity_weight_sum` in compute.py → column in `risk.county_features` → feature in train.py + score.py → surfaced in ExplainPanel + InfoPanel
 - [x] **Historical vs predicted comparison** — History tab in ExplainPanel shows 6-month line chart with reference line at current score, Δ change summary, and monthly trend; backed by GET /risk/history/:fips and seed_history.py for demo data
-- [x] **Confidence band** — random forest per-tree std → `confidence_lower` / `confidence_upper` in score.py → stored in `risk.scores` → surfaced in `GET /risk/explain/:fips` → ConfidenceBar component in ExplainPanel (range bar with shaded band + score tick)
+- [x] **Confidence band** — weighted feature std dev → `confidence_lower` / `confidence_upper` in score.py → stored in `risk.scores` → surfaced in `GET /risk/explain/:fips` → ConfidenceBar component in ExplainPanel (range bar with shaded band + score tick)
 
 ---
 
@@ -125,7 +125,7 @@ _Post-hackathon architecture decisions to note now so MVP design supports them._
 
 ## ML Requirements Gap
 _Must satisfy judging requirement: "Uses statistical or ML methods (logistic regression, gradient boosting, random forest)"._
-_Dropping the random forest left us with a weighted composite index — valid statistically, but not one of the listed ML methods._
+_Resolved: K-Means (sklearn) satisfies the ML requirement. Composite index alone was not sufficient; K-Means clustering on the normalized feature matrix provides the required ML method and adds genuine value as risk tier assignment._
 
 - [x] **K-Means clustering layer** — add unsupervised K-Means (sklearn) to the scoring pipeline; cluster all 3,220 counties by their normalized feature profile into K=5 risk tiers; use cluster assignment + distance from the highest-risk centroid as a ML-derived signal; store `cluster_id` per score row; surface "Risk Cluster" in the explain panel — satisfies the ML requirement with an algorithm genuinely appropriate for unlabeled hazard data
 - [x] **Update methodology doc** — `docs/ml_pipeline.md` fully rewritten: covers Explainable Risk Index + K-Means approach, "Why Not a Classifier?" section documents label sparsity (FEMA declarations lag, <1% positive rate in 90-day window), and why clustering fits unsupervised risk profiling

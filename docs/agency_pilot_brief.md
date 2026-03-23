@@ -149,5 +149,4 @@ Full documentation: [`docs/responsible_ai.md`](responsible_ai.md)
 
 ---
 
-*PRISM is built by Sky Solutions LLC.*
-*Full technical documentation: [`docs/architecture.md`](architecture.md) · [`docs/ml_pipeline.md`](ml_pipeline.md)*
+*Full technical documentation: [`docs/architecture.md`](architecture.md) · [`docs/ml_pipeline.md`](ml_pipeline.md) · [`docs/data_pipeline.md`](data_pipeline.md) · [`docs/responsible_ai.md`](responsible_ai.md) · [`SETUP.md`](../SETUP.md)*

@@ -10,7 +10,7 @@ An AI-powered disaster risk intelligence platform that helps emergency planners 
 
 PRISM ingests public data from FEMA, NWS, USGS, and the US Census Bureau and produces:
 
-- **0–100 risk scores** for all 3,200+ US counties, updated on demand
+- **0–100 risk scores** for all 3,220 US counties, updated on demand
 - **Ranked county list** sorted by risk level with top risk drivers per county
 - **Explainability panel** showing exactly which factors are driving each score
 - **K-Means risk tiers** (Tier 1 — Minimal Activity through Tier 5 — High-Risk Composite)

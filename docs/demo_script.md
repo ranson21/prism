@@ -113,6 +113,10 @@ Aim for 5 minutes end-to-end. Each scene has the URL to be on, the action to tak
 
 > "This is what your analysts see for any county in the country. Score, confidence, top drivers, trend — all in one view. Built for human judgment, not to replace it."
 
+**Action:** Switch back to `http://localhost:3000`. Click **About / Agency Pilot** in the dashboard header.
+
+> "The About panel shows the full adoption path — Phase 1 connecting to agency real-time feeds and pushing ranked alerts into EOC workflows, Phase 2 adding satellite imagery, infrastructure vulnerability modeling, and multi-hazard forecasting. The methodology and responsible AI commitments are fully documented."
+
 ---
 
 ## Closing (15 seconds)
@@ -143,10 +147,13 @@ Aim for 5 minutes end-to-end. Each scene has the URL to be on, the action to tak
 > "Current coverage is the 50 states. Adding territories is on the roadmap — it's a data availability question per connector, not an architecture change."
 
 **"How do you handle equity and bias?"**
-> "Income vulnerability is explicitly modeled as a risk amplifier — lower-income counties score higher to reflect reduced recovery capacity. It's documented in our Responsible AI section and visible in the About panel."
+> "Income vulnerability is explicitly modeled as a risk amplifier — lower-income counties score higher to reflect reduced recovery capacity. It's documented in our Responsible AI section (`docs/responsible_ai.md`) and visible in the About panel."
 
 **"Could this integrate with our existing EOC tool?"**
-> "Yes — the Go API exposes a clean REST interface. Any tool that can consume JSON can pull ranked county data and scenario outputs. Phase 1 of the agency pilot is exactly that integration."
+> "Yes — the Go API exposes a clean REST interface. Any tool that can consume JSON can pull ranked county data and scenario outputs. Phase 1 of the agency pilot is exactly that integration. The architecture doc (`docs/architecture.md`) has the EOC webhook interface design."
+
+**"Can I see the methodology in detail?"**
+> "Yes — `docs/ml_pipeline.md` covers the full feature engineering, composite index weights, K-Means tier assignment, and confidence band derivation. `docs/data_pipeline.md` covers the connector architecture and normalization layer."
 
 ---
 
@@ -163,3 +170,18 @@ Aim for 5 minutes end-to-end. Each scene has the URL to be on, the action to tak
 | Resource units (demo) | 50 |
 | Site port | 80 |
 | Dashboard port | 3000 |
+
+---
+
+## Documentation Reference (for Judges)
+
+All technical documentation lives in `docs/`:
+
+| Document | What it covers |
+|---|---|
+| [`docs/architecture.md`](architecture.md) | 3-tier architecture diagram, data flow, service responsibilities, EOC integration design, cloud deployment path |
+| [`docs/ml_pipeline.md`](ml_pipeline.md) | Feature engineering, composite index weights, K-Means methodology, confidence band derivation, "Why Not a Classifier?" |
+| [`docs/data_pipeline.md`](data_pipeline.md) | Connector architecture, normalization, FIPS alignment, real-time streaming expansion path |
+| [`docs/responsible_ai.md`](responsible_ai.md) | Five responsible AI commitments, data source limitations, model auditability, human-in-the-loop requirement |
+| [`docs/agency_pilot_brief.md`](agency_pilot_brief.md) | 5-minute executive briefing, Phase 1–2 adoption roadmap, technical credentials |
+| [`SETUP.md`](../SETUP.md) | Local development setup, AWS first deployment, ML pipeline execution |
