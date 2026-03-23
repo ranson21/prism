@@ -16,13 +16,14 @@ Features are computed over a rolling **90-day window** from `datasets.raw_events
 
 | Feature | Source | Description |
 |---|---|---|
-| `severe_weather_count` | NOAA (NWS) | Alert count weighted by severity tier (minor=1 → extreme=4) |
+| `major_disaster_count` | FEMA OpenFEMA | Count of events classified as major or extreme severity — the strongest available signal that a county required a major federal response |
+| `severe_weather_count` | NOAA (NWS) | Alert count in the window; reflects ongoing atmospheric hazard activity |
 | `earthquake_count` | USGS | Number of earthquake events in the county region |
 | `max_earthquake_magnitude` | USGS | Maximum magnitude of any earthquake in the window |
-| `hazard_frequency_score` | All sources | Composite rate of multi-source hazard events per capita |
-| `population_exposure` | Census × hazards | County population weighted by hazard frequency |
-| `economic_exposure` | Census × hazards | Median household income weighted by event severity |
-| `log_population` | Census | `ln(population + 1)` — ensures counties score meaningfully even in quiet periods |
+| `hazard_frequency_score` | All sources | `severity_weight_sum / window_days × 30` — rate of weighted hazard events per 30-day equivalent, normalizing for window length |
+| `population_exposure` | Census × hazards | `population × hazard_frequency_score` — people exposed at the current rate of hazard activity; rate-normalized so a county with 90 days of data does not inflate over one with 30 days of identical intensity |
+| `economic_exposure` | Census × hazards | `(median_income / 1000) × ln(population + 1) × hazard_frequency_score` — total economic activity at risk, scaling both income level and county size; log-population prevents large metros from dominating on size alone |
+| `log_population` | Census | `ln(population + 1)` — inherent exposure scale; differentiates counties even in quiet periods |
 | `income_vulnerability` | Census | `max(0, 1 − income / 120,000)` — lower-income counties score higher, reflecting reduced recovery capacity |
 
 Features are stored in `risk.county_features` with a `window_days` column (default: 90) and `feature_date` for versioning.
@@ -35,24 +36,25 @@ Source: `services/ml-engine/app/scoring/train.py`
 
 ### Step 1 — Normalize features
 
-All 8 features are normalized to [0, 1] using `sklearn.preprocessing.MinMaxScaler` fit on the current county feature set.
+All 9 features are normalized to [0, 1] using `sklearn.preprocessing.MinMaxScaler` fit on the current county feature set.
 
 ### Step 2 — Weighted composite score
 
 Each normalized feature is multiplied by its expert-calibrated weight:
 
-| Feature | Weight |
-|---|---|
-| `severe_weather_count` | 22% |
-| `max_earthquake_magnitude` | 14% |
-| `hazard_frequency_score` | 18% |
-| `log_population` | 12% |
-| `earthquake_count` | 10% |
-| `population_exposure` | 8% |
-| `economic_exposure` | 8% |
-| `income_vulnerability` | 8% |
+| Feature | Weight | Rationale |
+|---|---|---|
+| `major_disaster_count` | 22% | Ground truth — a FEMA declaration is the strongest signal a county needed a major response |
+| `population_exposure` | 20% | A hazard over 2M people is categorically different from the same hazard over 20k |
+| `hazard_frequency_score` | 12% | Persistent multi-hazard rate captures ongoing elevated conditions |
+| `max_earthquake_magnitude` | 10% | Magnitude is a direct measure of seismic energy release |
+| `severe_weather_count` | 10% | Alert frequency; intentionally reduced to avoid over-weighting dense tornado-watch grids (Dixie Alley) relative to actual confirmed impact |
+| `economic_exposure` | 10% | Economic activity at risk, scaled by both income and population size |
+| `earthquake_count` | 8% | Frequency of seismic activity independent of magnitude |
+| `log_population` | 5% | Structural baseline — inherent exposure scale for counties in quiet periods |
+| `income_vulnerability` | 3% | Equity signal; intentionally low so rural poverty does not outrank dense urban exposure |
 
-Weights are calibrated to reflect emergency management priorities: event-driven features (weather, earthquakes) dominate; structural features (population, income) provide a meaningful baseline for counties in quiet periods.
+Weights sum to 1.0 and are calibrated so that FEMA-confirmed outcomes and population scale dominate, while raw alert volume (which NOAA issues freely in high-watch corridors) does not inflate scores for counties with low confirmed impact.
 
 ### Step 3 — K-Means clustering
 

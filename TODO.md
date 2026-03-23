@@ -82,16 +82,25 @@ _Site currently has no in-app narrative for agency adoption or visible responsib
 
 ## Additional Features
 
+- [ ] Make heatmap a gradient and improve display/UX with some kind of highlight or glow or some visual effect that does not break 508
 - [ ] Let users lasso parts of the map to select counties to generate simulations against
 - [ ] Add  a dropdown to allow users to change the view from the default of county view to state and region (NE, NW, SE, etc.)
 - [ ] Add a toggle to display or hide U.S. territories
 - [ ] Add the ability to simulate multiple disasters on different counties as part of a scenario
 - [ ] Add the ability to save simulations
-- [ ] Make the risk levels at the top filter options so we can display onlt criticals, elevetated etc.
+- [ ] Make the risk levels at the top filter options so we can display only criticals, elevetated etc.
 - [ ] Add filter dropdown to risk rankings to toggle the number and types of rankings shown
 - [ ] Auto zoom selected county to a comfortable zoom level that shows surrounding counties but not the whole zoomed out map, this should also work when the app loads to zoom on the default
 
---- 
+---
+
+## Known Issues
+
+- [ ] some counties show major_disaster_count instead of Severe Weather
+- [ ] the history chart has the wrong range of numbers in the y axis
+- [ ] zoom snaps you away from the west coast, currently cant zoom in and scroll left past the midwest
+
+---
 
 ## Judging Criteria Alignment Checklist
 _Verify each criterion is demonstrably addressed before submission._

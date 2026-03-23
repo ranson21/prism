@@ -1,9 +1,12 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import mermaid from 'mermaid'
 import { ArrowLeft, BookOpen, Building2, ChevronRight, Cpu, Database, HelpCircle, Shield } from 'lucide-react'
 import prismLogo from '../assets/prism_logo.svg'
+
+mermaid.initialize({ startOnLoad: false, theme: 'dark' })
 
 import faqMd from '../../../../docs/faq.md?raw'
 import agencyPilotMd from '../../../../docs/agency_pilot_brief.md?raw'
@@ -58,6 +61,41 @@ const DOCS = [
     content: dataPipelineMd,
   },
 ]
+
+/* ── Mermaid diagram renderer ─────────────────────────────────────────── */
+
+function MermaidDiagram({ chart }: { chart: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!ref.current) return
+    const id = `mermaid-${Math.random().toString(36).slice(2)}`
+    mermaid.render(id, chart)
+      .then(({ svg }) => {
+        if (!ref.current) return
+        ref.current.innerHTML = svg
+        const el = ref.current.querySelector('svg')
+        if (el) {
+          el.removeAttribute('width')
+          el.removeAttribute('height')
+          el.style.maxWidth = '100%'
+          el.style.width = '100%'
+          el.style.height = 'auto'
+        }
+      })
+      .catch((e: Error) => setError(e.message))
+  }, [chart])
+
+  if (error) {
+    return (
+      <pre className="bg-[#111827] border border-red-500/30 rounded-xl p-4 mb-4 text-red-400 text-sm overflow-x-auto">
+        {chart}
+      </pre>
+    )
+  }
+  return <div ref={ref} className="my-6 overflow-x-auto" />
+}
 
 /* ── Context for detecting block vs inline code ───────────────────────── */
 
@@ -126,13 +164,29 @@ function MarkdownContent({ content }: { content: string }) {
         blockquote: ({ children }) => (
           <blockquote className="border-l-4 border-blue-500/40 pl-4 my-4 text-slate-400 italic">{children}</blockquote>
         ),
-        pre: ({ children }) => (
-          <BlockCodeCtx.Provider value={true}>
-            <pre className="bg-[#111827] border border-white/10 rounded-xl p-4 mb-4 overflow-x-auto text-sm leading-relaxed">
-              {children}
-            </pre>
-          </BlockCodeCtx.Provider>
-        ),
+        pre: ({ children }) => {
+          // Intercept mermaid blocks and render as SVG diagrams
+          const child = Array.isArray(children) ? children[0] : children
+          if (
+            child &&
+            typeof child === 'object' &&
+            'props' in child &&
+            typeof child.props?.className === 'string' &&
+            child.props.className.includes('language-mermaid')
+          ) {
+            const chart = typeof child.props.children === 'string'
+              ? child.props.children.trim()
+              : ''
+            return <MermaidDiagram chart={chart} />
+          }
+          return (
+            <BlockCodeCtx.Provider value={true}>
+              <pre className="bg-[#111827] border border-white/10 rounded-xl p-4 mb-4 overflow-x-auto text-sm leading-relaxed">
+                {children}
+              </pre>
+            </BlockCodeCtx.Provider>
+          )
+        },
         code: CodeRenderer,
         table: ({ children }) => (
           <div className="overflow-x-auto mb-6 rounded-xl border border-white/10">

@@ -5,7 +5,7 @@ For every county in geography.counties (whether or not it has recent events):
   - disaster_count / major_disaster_count
   - severe_weather_count
   - earthquake_count / max_earthquake_magnitude
-  - population_exposure  (population × severity_weight, summed)
+  - population_exposure  (population × hazard_frequency_score — rate-adjusted exposure)
   - hazard_frequency_score  (weighted events per 30 days)
   - log_population       (ln(population + 1) — inherent exposure scale)
   - income_vulnerability (1 − income/120000 — lower income → higher vulnerability)
@@ -13,6 +13,7 @@ For every county in geography.counties (whether or not it has recent events):
 Severity weights: minor=1, moderate=2, major=3, extreme=4
 """
 
+import asyncio
 import logging
 import math
 from datetime import date, datetime, timedelta, timezone
@@ -20,7 +21,7 @@ from datetime import date, datetime, timedelta, timezone
 import psycopg
 from psycopg.types.json import Jsonb
 
-from app.db import get_conn
+from app.db import get_conn, init_pool, close_pool
 
 log = logging.getLogger(__name__)
 
@@ -141,26 +142,31 @@ async def _upsert_features(
         total_count = row["total_count"] or 0
         median_household_income = row["median_household_income"]
 
-        # population_exposure: how many people were exposed, weighted by severity
-        population_exposure = float(population * severity_weight_sum)
-
         # hazard_frequency_score: weighted events normalized to a 30-day rate
         hazard_frequency_score = (
             round(severity_weight_sum / window_days * 30, 4) if window_days else 0.0
         )
 
-        # economic_exposure: income (in thousands) scaled by event severity — captures
-        # the dollar-value of economic activity at risk. Counties with higher income AND
-        # more severe events score higher. Uses Census ACS B19013_001E median HH income.
+        # population_exposure: people exposed, scaled by hazard rate (not raw event bulk).
+        # Using hazard_frequency_score (a 30-day rate) prevents counties with more days
+        # of data from inflating their score vs. counties with equivalent ongoing intensity.
+        population_exposure = round(float(population) * hazard_frequency_score, 4)
+
+        # economic_exposure: total economic activity at risk — income level × population size
+        # × hazard rate. Using log_population prevents giant metro counties from dominating
+        # purely on size; the log scale means a county 10× larger scores ~2.3× higher, not 10×.
+        # This ensures Gibson County IN (pop 33k, high alerts) scores below LA County (pop 10M).
+        log_pop = math.log(population + 1) if population else 0.0
         economic_exposure = (
-            round(float(median_household_income) / 1000.0 * severity_weight_sum, 4)
+            round(float(median_household_income) / 1000.0 * log_pop * hazard_frequency_score, 4)
             if median_household_income is not None
             else 0.0
         )
 
         # log_population: ln(population + 1) — standalone inherent exposure scale.
         # Differentiates counties even when no active events are present.
-        log_population = round(math.log(population + 1), 4) if population else 0.0
+        # Also used internally by economic_exposure above (as log_pop).
+        log_population = round(log_pop, 4)
 
         # income_vulnerability: 1 - income/120000, floored at 0.
         # Lower-income counties have higher vulnerability regardless of active events.
@@ -236,3 +242,18 @@ async def _upsert_features(
         count += 1
 
     return count
+
+
+async def _main() -> None:
+    await init_pool()
+    try:
+        print("→ Computing features...")
+        written = await compute_features()
+        print(f"  {written} counties written")
+        print("✓ Done")
+    finally:
+        await close_pool()
+
+
+if __name__ == "__main__":
+    asyncio.run(_main())
