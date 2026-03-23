@@ -2,9 +2,10 @@ import { createContext, useContext, type ReactNode } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { ArrowLeft, BookOpen, Building2, ChevronRight, Cpu, Database, Shield } from 'lucide-react'
+import { ArrowLeft, BookOpen, Building2, ChevronRight, Cpu, Database, HelpCircle, Shield } from 'lucide-react'
 import prismLogo from '../assets/prism_logo.svg'
 
+import faqMd from '../../../../docs/faq.md?raw'
 import agencyPilotMd from '../../../../docs/agency_pilot_brief.md?raw'
 import responsibleAiMd from '../../../../docs/responsible_ai.md?raw'
 import architectureMd from '../../../../docs/architecture.md?raw'
@@ -14,6 +15,13 @@ import dataPipelineMd from '../../../../docs/data_pipeline.md?raw'
 const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL ?? 'http://localhost:3000'
 
 const DOCS = [
+  {
+    slug: 'faq',
+    title: 'Presenter FAQ',
+    description: 'Scoring, simulator, and methodology — answered directly',
+    Icon: HelpCircle,
+    content: faqMd,
+  },
   {
     slug: 'agency-pilot',
     title: 'Agency Pilot Brief',

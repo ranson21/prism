@@ -1,0 +1,106 @@
+# Presenter FAQ
+
+Common questions from judges, agency partners, and technical reviewers — with direct, honest answers.
+
+---
+
+## Scoring & Risk Index
+
+### What does a score of 100 mean? Is Honolulu really the most dangerous county in the US?
+
+A score of 100 does **not** mean Honolulu will definitely have a disaster, or that it is objectively more dangerous in an absolute sense. It means Honolulu ranks **#1 among all 3,220 US counties** on a composite signal of current hazard data.
+
+The score is a **relative urgency index**, not a probability. Think of it like a triage score in an emergency room: it tells you who needs attention first, not how sick someone is in absolute terms.
+
+Honolulu reaches 100 because it simultaneously scores at or near the top nationally across multiple independent dimensions:
+
+- **Seismic activity** — Hawaii sits on an active volcanic hotspot with frequent earthquakes at significant magnitudes
+- **Severe weather events** — tropical systems, high surf, and storm frequency in the 90-day data window
+- **Hazard frequency score** — persistent multi-hazard exposure, not a single event spike
+- **Population exposure** — high-density coastal geography with limited evacuation routes
+
+No other US county combines all of those signals at the same level in the current data window. That is what the 100 reflects.
+
+### Why use a 0–100 index instead of a raw probability?
+
+FEMA's own National Risk Index uses the same approach. There are three reasons:
+
+1. **Disaster declarations in a 90-day window are too rare and delayed** to serve as reliable training labels for a probability model. A county can absorb a major event without a formal declaration for weeks.
+
+2. **Explainability is a first-class requirement.** Every score must be traceable to named, auditable features. A raw ML probability is a black box to an emergency manager; a weighted composite with visible drivers is not.
+
+3. **Relative ranking is what operations actually need.** When deciding where to pre-position response teams, decision makers need a ranked list — not a table of probabilities that are all below 5% and look identical.
+
+The power-transform normalization is intentional: it compresses the bottom of the distribution (where ~50% of counties are genuinely low-risk) and creates meaningful separation at the top, where ~13% of counties (~420) surface as critical. That is a tractable triage list.
+
+### What are the honest limitations of the score?
+
+- **It reflects a 90-day data window.** A county quiet in the last 90 days scores lower than one with recent events, even if both are structurally equally exposed. PRISM is a current-conditions signal, not a long-run climate model.
+- **The score is relative.** If every county in the US had a bad quarter simultaneously, all scores would redistribute — some would still show 100.
+- **Income vulnerability is a structural proxy.** It captures which populations have less capacity to absorb impact, but it is not a direct measure of infrastructure resilience.
+- **Data coverage is uneven.** NOAA weather alerts and USGS earthquake data have strong national coverage. FEMA declaration data lags real-world events by days to weeks.
+
+---
+
+## Scenario Simulator
+
+### What does the scenario simulator actually do right now?
+
+The current simulator models **resource allocation stress** under a user-defined severity multiplier. Given a set of selected counties and a multiplier (e.g., 1.5× — a moderate escalation):
+
+1. It applies the severity multiplier to the baseline risk score for each selected county
+2. It distributes available `resource_units` across those counties proportional to their escalated scores
+3. It identifies counties where need exceeds allocated resources (`unmet_need: true`)
+4. It returns a side-by-side comparison: baseline score vs. simulated score, with resource allocation breakdown
+
+This is useful for answering: *"If conditions in these counties escalate by 50%, do we have enough pre-positioned resources to cover them, and which counties would be left under-served?"*
+
+### What is the planned improvement to the simulator?
+
+The current model applies a uniform multiplier and is county-selection-driven. The planned upgrade models an **event-driven simulation**:
+
+- A user selects a **disaster type** (hurricane, earthquake sequence, flooding event) and an **impact region** (drawn on the map or selected by state/county)
+- The simulator estimates **feature-level impacts** for that event type — e.g., a hurricane would raise `severe_weather_count`, `hazard_frequency_score`, and `population_exposure` for affected counties by modeled amounts
+- Those feature changes flow through the full scoring pipeline, producing **updated risk scores for all counties** — including non-impacted ones whose relative ranking shifts as the impacted counties move up
+- The output shows the **national redistribution of risk**: which counties' resource need increases, which drops, and what the aggregate unmet need looks like if current resources stay fixed
+
+This gives decision makers a genuine answer to: *"If a Category 3 hurricane makes landfall in these Gulf Coast counties, where does that leave the rest of the national resource picture?"*
+
+### Why does the risk score of a non-impacted county change when a distant county is simulated?
+
+Because the scoring is **percentile-based**. All counties are ranked against each other. If a simulated event pushes a group of counties dramatically higher, their movement up the ranking compresses the scores of nearby counties in the distribution — the same way a new entrant at the top of a leaderboard shifts everyone else down one position.
+
+This is a feature, not a bug: it mirrors how real resource allocation works. A major event in Louisiana doesn't just create need there — it also draws national resources away from counties that otherwise would have received pre-positioning. PRISM's score reflects that competitive dynamic.
+
+---
+
+## Data & Methodology
+
+### Where does the data come from?
+
+| Source | Data | Update Cadence |
+|--------|------|---------------|
+| FEMA OpenFEMA | Disaster declarations, individual assistance registrations | Near-real-time |
+| NOAA (National Weather Service) | Severe weather alerts by county | Near-real-time |
+| USGS Earthquake Catalog | Seismic events with magnitude and location | Near-real-time |
+| US Census | County population, median household income | Annual |
+
+All data sources are public, freely available, and fully cited. PRISM does not use proprietary or purchased data.
+
+### How often are scores updated?
+
+Scores are computed on demand by re-running the ingestion → features → score pipeline. In production, this would run on a scheduled cadence (daily or on significant-event triggers). The current deployment reflects the last pipeline run.
+
+### Could this be gamed or manipulated?
+
+All input data is from official government sources (FEMA, NOAA, USGS) that PRISM reads but does not write. There is no mechanism for a county or agency to influence their own score. The methodology, weights, and feature definitions are fully documented and auditable in the [ML Pipeline](./ml_pipeline.md) doc.
+
+---
+
+## Responsible AI
+
+### Does PRISM make decisions?
+
+No. PRISM is a **decision-support tool**, not a decision-making system. It surfaces ranked risk signals and explains why they are ranked that way. Every output is framed as a recommendation for human review, not an automated action.
+
+See [Responsible AI](./responsible_ai.md) for the full commitments on transparency, equity, and uncertainty communication.
