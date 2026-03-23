@@ -3,8 +3,9 @@ include "root" {
 }
 
 locals {
-  env_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
-  env      = local.env_vars.locals
+  env_vars   = read_terragrunt_config(find_in_parent_folders("env.hcl"))
+  env        = local.env_vars.locals
+  account_id = get_aws_account_id()
 }
 
 dependency "vpc" {
@@ -85,7 +86,7 @@ inputs = {
 
       container_definitions = {
         api = {
-          image     = "119004746646.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-api:latest"
+          image     = "${local.account_id}.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-api:latest"
           essential = true
           port_mappings = [{ containerPort = 8080, protocol = "tcp" }]
           environment = [
@@ -119,7 +120,7 @@ inputs = {
 
       container_definitions = {
         ml-engine = {
-          image     = "119004746646.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-ml-engine:latest"
+          image     = "${local.account_id}.dkr.ecr.${local.env.region}.amazonaws.com/prism-${local.env.env}-ml-engine:latest"
           essential = true
           port_mappings = [{ containerPort = 8001, protocol = "tcp" }]
           environment = [

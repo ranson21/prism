@@ -173,17 +173,7 @@ TF_LOCK_TABLE=prism-terraform-locks
 AWS_DEFAULT_REGION=us-east-1
 ```
 
-### 4. Patch account ID into ECS configs (once per account)
-
-The ECS terragrunt configs reference your ECR registry by account ID:
-
-```bash
-make aws-patch-account
-```
-
-This replaces the `ACCOUNT_ID` placeholder in all environment ECS configs with your real account ID. Commit the result.
-
-### 5. CloudFront account verification (new AWS accounts only)
+### 4. CloudFront account verification (new AWS accounts only)
 
 New AWS accounts require account verification before CloudFront distributions can be created. If `infra-apply` fails on the CloudFront module with an `AccessDenied` error:
 
