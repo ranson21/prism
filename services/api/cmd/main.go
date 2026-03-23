@@ -30,6 +30,7 @@ func main() {
 
 	r := gin.Default()
 	r.Use(cors.Default())
+	r.OPTIONS("/*any", func(c *gin.Context) { c.Status(http.StatusNoContent) })
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
