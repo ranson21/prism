@@ -126,6 +126,13 @@ inputs = {
           secrets = [
             { name = "DB_PASSWORD", valueFrom = "${dependency.rds.outputs.db_instance_master_user_secret_arn}:password::" }
           ]
+          # Artifacts dir must be writable; rest of FS stays read-only via tmpfs overlay
+          linux_parameters = {
+            tmpfs = [{
+              container_path = "/app/artifacts"
+              size           = 512
+            }]
+          }
         }
       }
 
