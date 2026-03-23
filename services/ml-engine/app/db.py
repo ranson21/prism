@@ -14,6 +14,12 @@ def _dsn() -> str:
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         raise RuntimeError("DATABASE_URL environment variable is required")
+    password = os.environ.get("DB_PASSWORD")
+    if password:
+        from urllib.parse import urlparse, urlunparse
+        p = urlparse(dsn)
+        netloc = f"{p.username}:{password}@{p.hostname}:{p.port or 5432}"
+        dsn = urlunparse(p._replace(netloc=netloc))
     return dsn
 
 
