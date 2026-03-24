@@ -25,11 +25,35 @@ export default function App() {
   const [simResults, setSimResults] = useState<SimResult[] | null>(null)
   const [simFips, setSimFips] = useState<Set<string>>(new Set())
   const [focusSelected, setFocusSelected] = useState(false)
+  const [levelFilter, setLevelFilter] = useState<string | null>(null)
+  const [rankingLimit, setRankingLimit] = useState<number | null>(100)
 
   const { data: summary } = useGetSummaryQuery()
   const { data: rankings, isLoading } = useGetRankingsQuery({ limit: 3500 })
 
   const counties = rankings?.rankings ?? []
+
+  const filteredCounties = useMemo(() => {
+    const byLevel = levelFilter ? counties.filter(c => c.risk_level === levelFilter) : counties
+    return rankingLimit ? byLevel.slice(0, rankingLimit) : byLevel
+  }, [counties, levelFilter, rankingLimit])
+
+  // When a county is selected, ensure it's visible in the table:
+  // 1. If level filter doesn't match, update it to the county's level
+  // 2. If the county falls outside the rank limit, expand to All
+  useEffect(() => {
+    if (!selectedFips || !counties.length) return
+    const county = counties.find(c => c.fips_code === selectedFips)
+    if (!county) return
+
+    const targetLevel = county.risk_level
+    const effectiveFilter = levelFilter !== targetLevel ? targetLevel : levelFilter
+    if (levelFilter !== targetLevel) setLevelFilter(targetLevel)
+
+    const byLevel = counties.filter(c => c.risk_level === effectiveFilter)
+    const pos = byLevel.findIndex(c => c.fips_code === selectedFips)
+    if (rankingLimit !== null && pos >= rankingLimit) setRankingLimit(null)
+  }, [selectedFips])
 
   useEffect(() => {
     if (selectedFips || !counties.length) return
@@ -120,7 +144,13 @@ export default function App() {
       </nav>
 
       <main className="flex-1 overflow-y-auto lg:overflow-hidden p-4 lg:p-6 flex flex-col gap-4">
-        {summary && <SummaryBar summary={summary} />}
+        {summary && (
+          <SummaryBar
+            summary={summary}
+            activeFilter={levelFilter}
+            onFilter={(level) => setLevelFilter(prev => prev === level ? null : level)}
+          />
+        )}
 
         {isLoading && (
           <div className="text-center py-20 text-slate-400">Loading risk data...</div>
@@ -134,11 +164,15 @@ export default function App() {
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[360px_300px_1fr] gap-4">
             {/* Rankings Table */}
             <RankingsTable
-              rankings={counties.slice(0, 100)}
+              rankings={filteredCounties}
               selectedFips={selectedFips}
               hoveredFips={hoveredFips}
               onSelect={setSelectedFips}
               onHover={setHoveredFips}
+              rankingLimit={rankingLimit}
+              onLimitChange={setRankingLimit}
+              levelFilter={levelFilter}
+              onLevelFilter={(level) => setLevelFilter(prev => prev === level ? null : level)}
             />
 
             {/* Explain Panel */}

@@ -100,8 +100,8 @@ _Tackle these in order; each builds on the previous._
 - [ ] Add a toggle to display or hide U.S. territories
 
 ### Dashboard Features
-- [ ] Make the risk levels at the top filter options so we can display only criticals, elevated etc.
-- [ ] Add filter dropdown to risk rankings to toggle the number and types of rankings shown
+- [x] Make the risk levels at the top filter options so we can display only criticals, elevated etc.
+- [x] Add filter dropdown to risk rankings to toggle the number and types of rankings shown
 
 ### Scenario Features
 - [ ] Add the ability to simulate multiple disasters on different counties as part of a scenario
