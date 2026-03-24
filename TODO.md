@@ -85,12 +85,12 @@ _Site currently has no in-app narrative for agency adoption or visible responsib
 ### Map UX — Priority Order
 _Tackle these in order; each builds on the previous._
 
-- [ ] **P1 — Cursor + hover glow** — fix `cursor: pointer` on counties (currently `not-allowed` for unscored), brighten hover fill/stroke so the county about to be selected is visually obvious; add a subtle outer glow via stroke-width bump on hover
-- [ ] **P2 — Hover tooltip** — show a small floating tooltip on county hover with: county name, state, risk score, risk level badge; dismiss on mouse leave; must not obscure nearby counties
-- [ ] **P3 — Score-interpolated gradient fill** — replace 4-color discrete buckets with a continuous color scale interpolated from the county's 0–100 score (e.g. green → yellow → orange → red); 508-safe (don't rely on color alone — score label in tooltip satisfies this)
+- [x] **P1 — Cursor + hover glow** — fix `cursor: pointer` on counties (currently `not-allowed` for unscored), brighten hover fill/stroke so the county about to be selected is visually obvious; add a subtle outer glow via stroke-width bump on hover
+- [x] **P2 — Hover tooltip** — show a small floating tooltip on county hover with: county name, state, risk score, risk level badge; dismiss on mouse leave; must not obscure nearby counties
+- [x] **P3 — Score-interpolated gradient fill** — replace 4-color discrete buckets with a continuous color scale interpolated from the county's 0–100 score (teal → yellow → orange → rose); 508-safe (tooltip + table + explain panel satisfy non-color requirement)
 - [ ] **P4 — Map legend** — small fixed overlay (bottom-left) showing the color scale with score range labels (0 / 25 / 50 / 75 / 100); helps judges and users orient immediately without clicking anything
 - [ ] **P5 — Selected county ring** — make the currently selected county more visually distinct at all zoom levels: thicker stroke, brighter color, possibly a pulsing ring effect; current white stroke is invisible at zoom 1
-- [ ] **P6 — State boundary layer** — overlay a separate state-boundary GeoJSON at a fixed stroke weight so state lines are always visible regardless of zoom; county fills sit below, state lines sit above
+- [x] **P6 — State boundary layer** — overlay a separate state-boundary GeoJSON at a fixed stroke weight so state lines are always visible regardless of zoom; county fills sit below, state lines sit above
 - [ ] **P7 — Bidirectional hover sync** — hovering a row in the rankings table highlights the corresponding county on the map and vice versa; reinforces the connection between the table and the map
 
 ### Map UX — Lower Priority
