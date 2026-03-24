@@ -1,14 +1,14 @@
 export type RiskLevel = 'low' | 'moderate' | 'elevated' | 'critical'
 
 export const RISK_COLOR: Record<RiskLevel, string> = {
-  low:      '#22c55e',
-  moderate: '#eab308',
+  low:      '#2dd4bf',  // teal — distinguishable from red under red-green colorblindness
+  moderate: '#facc15',
   elevated: '#f97316',
   critical: '#ef4444',
 }
 
 export const RISK_BG: Record<RiskLevel, string> = {
-  low:      'bg-green-500/20 text-green-400',
+  low:      'bg-teal-500/20 text-teal-400',
   moderate: 'bg-yellow-500/20 text-yellow-400',
   elevated: 'bg-orange-500/20 text-orange-400',
   critical: 'bg-red-500/20 text-red-400',
@@ -19,12 +19,15 @@ export function riskColor(level: RiskLevel): string {
 }
 
 // Continuous color interpolation for map fills based on 0–100 score.
-// Stops match the 4 risk level boundaries: 0=low, 25=moderate, 50=elevated, 75+=critical.
+// Stops are tuned for perceptual separation — moderate and elevated use
+// more saturated/shifted hues so they stay distinct from each other and
+// from low/critical at all opacity levels.
 const GRADIENT_STOPS: [number, [number, number, number]][] = [
-  [0,   [0x22, 0xc5, 0x5e]],  // green  (low)
-  [25,  [0xea, 0xb3, 0x08]],  // yellow (moderate)
-  [50,  [0xf9, 0x73, 0x16]],  // orange (elevated)
-  [100, [0xef, 0x44, 0x44]],  // red    (critical)
+  [0,   [0x2d, 0xd4, 0xbf]],  // teal (low) — colorblind-safe, distinct from red
+  [25,  [0xfa, 0xcc, 0x15]],  // vivid yellow   (moderate)
+  [50,  [0xf9, 0x73, 0x16]],  // saturated orange (elevated)
+  [75,  [0xef, 0x44, 0x44]],  // red            (critical onset)
+  [100, [0xdc, 0x26, 0x26]],  // deep red       (critical peak)
 ]
 
 export function scoreToColor(score: number): string {

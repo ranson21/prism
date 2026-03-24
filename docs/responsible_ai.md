@@ -100,6 +100,23 @@ Any score in `risk.scores` can be traced back to:
 
 ---
 
+## Accessibility & Color Design
+
+PRISM's risk heatmap is designed to communicate hazard severity visually while remaining usable across a range of visual conditions.
+
+**Color is never the only signal.** Every county's risk level is conveyed through multiple parallel channels:
+- Hover tooltip: county name, numeric score, and text risk level badge
+- Rankings table: fully text-based ranked list with labeled risk levels
+- Explain panel: numeric score, confidence band, and named feature drivers
+
+This satisfies Section 508 / WCAG 2.1 Success Criterion 1.4.1 — *Use of Color* — which requires that color not be the sole means of conveying information.
+
+**Colorblind accommodation.** The map gradient uses a **teal → yellow → orange → red** scale rather than green → red. Teal carries significant blue channel content that red does not, making the low-to-critical range distinguishable under both deuteranopia (missing green cones) and protanopia (missing red cones). All five gradient stops meet WCAG AA 3:1 non-text contrast ratio against the dark map background (lowest measured: 3.98:1).
+
+**Known limitation.** Orange (elevated, ~score 50) and red (critical, ~score 75+) can appear as similar brownish tones under deuteranopia. This is mitigated by the text-based channels above and the score number shown in the tooltip. A future improvement would shift elevated toward amber and critical toward rose/magenta to create greater hue separation at the warm end of the scale.
+
+---
+
 ## Human-in-the-Loop
 
 PRISM is designed for decision-support, not automated action. No PRISM output should directly trigger a resource deployment, evacuation order, or emergency declaration without human review.
