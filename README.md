@@ -4,11 +4,43 @@ An AI-powered disaster risk intelligence platform that helps emergency planners 
 
 > "Where should we act right now, and why?"
 
+**Live demo:** https://prod.d3vtja5wfwepyp.amplifyapp.com
+**Live dashboard:** https://prod.d3vtja5wfwepyp.amplifyapp.com/app
+**Documentation:** https://prod.d3vtja5wfwepyp.amplifyapp.com/docs
+
 ---
 
-## What PRISM Does
+## The Real-World Problem
 
-PRISM ingests public data from FEMA, NOAA, USGS, and the US Census Bureau and produces:
+Every major disaster reveals the same gap: emergency management agencies have more data than ever — FEMA disaster declarations, weather alerts, earthquake feeds, Census demographics — but that data lives in siloed systems with no unified picture of where risk is actually highest *right now*.
+
+The result is reactive decision-making under pressure. When a storm makes landfall, it is too late to ask where the most vulnerable counties were. Resource pre-positioning decisions — which directly determine response times and outcomes — are made without a shared operating picture or an auditable rationale.
+
+PRISM was built to close that gap. It is designed around the specific operational question every Emergency Operations Center faces before a disaster: *"Where should we send resources, and how do we defend that decision?"*
+
+The design is grounded in three constraints that govern real government adoption:
+
+- **Explainability is non-negotiable.** A risk score that cannot be explained to a stakeholder or a congressional oversight committee cannot be used. Every PRISM output traces directly to named public data sources.
+- **Uncertainty must be visible.** Emergency managers need to know how much to trust a score. PRISM surfaces a confidence band on every estimate — wide bands flag low-confidence inputs so analysts know when to rely on local knowledge instead.
+- **Human judgment stays in the loop.** PRISM informs decisions. It does not automate them. The scenario simulator surfaces resource gaps and recommends priorities; the final call belongs to the incident commander.
+
+---
+
+## How AI Powers PRISM
+
+PRISM uses a two-layer AI architecture designed for unlabeled hazard data — a domain where ground-truth labels are sparse, lagged, and systematically biased toward wealthier counties that receive faster federal declarations.
+
+**Layer 1 — Explainable Risk Index.** Eight features engineered from four public data sources (FEMA, NWS, USGS, Census) are normalized via MinMaxScaler and combined with expert-calibrated weights drawn from FEMA's own National Risk Index methodology. This produces a 0–100 composite score with direct feature attribution — every score is fully decomposable into its inputs.
+
+**Layer 2 — K-Means Risk Tier Assignment.** Unsupervised K-Means clustering (scikit-learn, k=5) groups all 3,220 counties by their full normalized feature profile into risk tiers. This adds a peer-benchmarking dimension: a county is not just scored in isolation but placed in context relative to counties with similar hazard profiles nationally. A supervised classifier was evaluated and rejected — FEMA major disaster declarations in a 90-day window yield a near-zero positive label rate (<1%), making classifier probability calibration unreliable. The methodology section of [`docs/ml_pipeline.md`](docs/ml_pipeline.md) documents this decision.
+
+**Confidence bands** are derived from the weighted standard deviation of normalized feature values per county. A county with consistent signals across all eight features receives a tight band; a county with mixed signals (high earthquake exposure, low weather activity) receives a wide band — communicating model uncertainty directly in the UI.
+
+The architecture is designed for the next step: connecting to real-time agency feeds, federating with agency SSO (SAML 2.0 / OIDC), and deploying on FedRAMP-authorized infrastructure. The full agency adoption path is documented in [`docs/agency_pilot_brief.md`](docs/agency_pilot_brief.md).
+
+---
+
+## What PRISM Produces
 
 - **0–100 risk scores** for all 3,220 US counties, updated on demand
 - **Ranked county list** sorted by risk level with top risk drivers per county
@@ -114,11 +146,17 @@ Copy `environments/local/.env.example` to `environments/local/.env` and set `DAT
 
 ## Demo Script
 
-1. **Open the dashboard** — the map loads with all 3,220 counties colored by risk level (green → yellow → orange → red).
-2. **Click a high-risk county** (red/orange on the map) — the Explain panel opens showing the risk score, confidence band, top risk drivers chart, and K-Means tier.
-3. **Switch to History tab** — see the 6-month score trend for that county.
-4. **Open the Scenario Simulator** — select "Category 5 Hurricane", set Resource Units to 50, click Run. The results show which counties' risk spikes, which 50 get resources deployed, and which have unmet need.
-5. **Click "About / Agency Pilot"** in the header — explains the methodology, scoring approach, and path to agency adoption.
+The live system is deployed at **https://prod.d3vtja5wfwepyp.amplifyapp.com** — no local setup required.
+
+1. **Open the landing site** — scroll through the problem framing, then click "Open Live Dashboard."
+2. **The map loads** with all 3,220 counties colored by risk level (green → yellow → orange → red).
+3. **Click a high-risk county** — the Explain panel opens showing the risk score, confidence band, top risk drivers chart, and K-Means tier.
+4. **Switch to History tab** — see the 6-month score trend for that county.
+5. **Open the Scenario Simulator** — select "Category 5 Hurricane", set Resource Units to 50, click Run. Results show which counties spike to critical, which 50 receive a resource team (DEPLOYED), and which have unmet need (UNMET).
+6. **Click "About / Agency Pilot"** in the header — methodology, scoring approach, and adoption roadmap.
+7. **Browse the docs site** at `/docs` — full technical documentation including architecture, ML pipeline, responsible AI commitments, and agency SSO integration design.
+
+Full presenter talking points: [`docs/demo_script.md`](docs/demo_script.md)
 
 ---
 
