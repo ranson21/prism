@@ -51,9 +51,9 @@ export function ScenarioPanel({ onResults, onReset, selectedCounties, onToggleCo
   return (
     <>
     {showInfo && <InfoPanel onClose={() => setShowInfo(false)} />}
-    <div className="rounded-xl bg-[#111827] border border-white/10 overflow-hidden flex flex-col h-full">
+    <div className="rounded-xl bg-[#111827] border border-white/10 overflow-hidden flex flex-col min-h-[500px] lg:h-full lg:min-h-0">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowInfo((v) => !v)}
@@ -79,7 +79,11 @@ export function ScenarioPanel({ onResults, onReset, selectedCounties, onToggleCo
         </button>
       </div>
 
-      <div className="px-4 py-4 border-b border-white/10 space-y-4">
+      {/* Scrollable controls — hidden entirely on short viewports when results are present */}
+      <div
+        className={`overflow-y-auto min-h-0 px-4 py-4 space-y-4${data ? ' [@media(max-height:900px)]:hidden' : ''}`}
+        style={{ flex: data ? '0 1 auto' : '1 1 auto' }}
+      >
         {/* Presets */}
         <div>
           <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Quick Presets</p>
@@ -181,7 +185,10 @@ export function ScenarioPanel({ onResults, onReset, selectedCounties, onToggleCo
             </div>
           )}
         </div>
+      </div>
 
+      {/* Run button — always visible, pinned above results */}
+      <div className="px-4 py-3 border-t border-b border-white/10 shrink-0">
         <button
           onClick={run}
           disabled={isLoading || !scenarioName.trim()}
@@ -193,7 +200,7 @@ export function ScenarioPanel({ onResults, onReset, selectedCounties, onToggleCo
 
       {/* Results */}
       {data && (
-        <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+        <div className="min-h-[300px] lg:flex-1 overflow-y-auto flex flex-col">
           <div className="px-4 py-3 border-b border-white/10 shrink-0 space-y-2">
             <p className="text-xs text-slate-400 uppercase tracking-wider">{data.name} — {data.total} counties</p>
             {data.resource_units > 0 && (

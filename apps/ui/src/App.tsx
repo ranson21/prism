@@ -120,7 +120,7 @@ export default function App() {
         ))}
       </nav>
 
-      <main className="flex-1 overflow-hidden p-6 flex flex-col gap-4">
+      <main className="flex-1 overflow-y-auto lg:overflow-hidden p-4 lg:p-6 flex flex-col gap-4">
         {summary && <SummaryBar summary={summary} />}
 
         {isLoading && (
@@ -132,7 +132,7 @@ export default function App() {
         )}
 
         {!isLoading && activeTab === 'dashboard' && (
-          <div className="flex-1 min-h-0 grid grid-cols-[360px_300px_1fr] gap-4">
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[360px_300px_1fr] gap-4">
             {/* Rankings Table */}
             <RankingsTable
               rankings={counties.slice(0, 100)}
@@ -154,7 +154,7 @@ export default function App() {
             {/* Map */}
             <div className="flex flex-col gap-2 min-h-0">
               <p className="text-xs text-slate-400 uppercase tracking-wider shrink-0">County Risk Heatmap</p>
-              <div className="flex-1 min-h-0 relative">
+              <div className="h-[400px] lg:flex-1 lg:h-auto min-h-0 relative">
                 <RiskMap
                   rankings={counties}
                   selectedFips={selectedFips}
@@ -170,7 +170,7 @@ export default function App() {
         )}
 
         {!isLoading && activeTab === 'scenarios' && (
-          <div className="flex-1 min-h-0 grid grid-cols-[420px_1fr] gap-4">
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
             {/* Scenario Panel */}
             <ScenarioPanel
               onResults={setSimResults}
@@ -198,7 +198,7 @@ export default function App() {
                   </button>
                 )}
               </div>
-              <div className="flex-1 min-h-0 relative">
+              <div className="h-[400px] lg:flex-1 lg:h-auto min-h-0 relative">
                 <RiskMap
                   rankings={scenarioCounties}
                   selectedFips={selectedFips}
