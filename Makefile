@@ -13,7 +13,7 @@ export
         ecr-login ecr-push-dev ecr-push-test \
         deploy-static-dev deploy-static-test \
         deploy-amplify-dev aws-amplify-url \
-        aws-db-migrate aws-seed-data aws-pipeline aws-features aws-retrain aws-alb-url aws-s3-site-url aws-url
+        aws-db-migrate aws-seed-data aws-pipeline aws-seed-history aws-features aws-retrain aws-alb-url aws-s3-site-url aws-url
 
 bootstrap: bootstrap-ml bootstrap-api bootstrap-web
 
@@ -584,6 +584,44 @@ aws-pipeline:
 	EXIT=$$(aws ecs describe-tasks --cluster $(CLUSTER) --tasks $$TASK_ID \
 	  --region $(REGION) --query "tasks[0].containers[0].exitCode" --output text); \
 	[ "$$EXIT" = "0" ] && echo "✓ Pipeline complete" || (echo "✗ Task failed (exit $$EXIT)" && exit 1)
+
+# Seed 6 months of backdated historical scores for the active model version.
+# Must be run after aws-pipeline or aws-retrain — each new model version
+# starts with only today's score; this populates the history chart.
+aws-seed-history:
+	$(eval ENV    ?= dev)
+	$(eval REGION ?= us-east-1)
+	$(eval CLUSTER = prism-$(ENV))
+	$(eval SUBNET  = $(shell aws ecs list-tasks --cluster $(CLUSTER) --service-name ml-engine \
+	  --query 'taskArns[0]' --output text --region $(REGION) | \
+	  xargs -I{} aws ecs describe-tasks --cluster $(CLUSTER) --tasks {} --region $(REGION) \
+	  --query "tasks[0].attachments[0].details[?name=='subnetId'].value" --output text))
+	$(eval SG      = $(shell aws ecs list-tasks --cluster $(CLUSTER) --service-name ml-engine \
+	  --query 'taskArns[0]' --output text --region $(REGION) | \
+	  xargs -I{} aws ecs describe-tasks --cluster $(CLUSTER) --tasks {} --region $(REGION) \
+	  --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" --output text | \
+	  xargs -I{} aws ec2 describe-network-interfaces --network-interface-ids {} --region $(REGION) \
+	  --query "NetworkInterfaces[0].Groups[0].GroupId" --output text))
+	$(eval TASKDEF = $(shell aws ecs describe-services --cluster $(CLUSTER) --services ml-engine \
+	  --region $(REGION) --query "services[0].taskDefinition" --output text))
+	@echo "→ Seeding 6-month score history in Fargate task..."
+	@TASK_ARN=$$(aws ecs run-task \
+	  --cluster $(CLUSTER) --task-definition $(TASKDEF) --launch-type FARGATE \
+	  --network-configuration "{\"awsvpcConfiguration\":{\"subnets\":[\"$(SUBNET)\"],\"securityGroups\":[\"$(SG)\"],\"assignPublicIp\":\"ENABLED\"}}" \
+	  --overrides '{"containerOverrides":[{"name":"ml-engine","command":["python","-m","app.scoring.seed_history"]}]}' \
+	  --region $(REGION) --query "tasks[0].taskArn" --output text); \
+	TASK_ID=$$(basename $$TASK_ARN); \
+	echo "  Task: $$TASK_ID"; \
+	while true; do \
+	  STATUS=$$(aws ecs describe-tasks --cluster $(CLUSTER) --tasks $$TASK_ID \
+	    --region $(REGION) --query "tasks[0].lastStatus" --output text 2>/dev/null); \
+	  echo "  $$STATUS"; \
+	  [ "$$STATUS" = "STOPPED" ] && break; \
+	  sleep 10; \
+	done; \
+	EXIT=$$(aws ecs describe-tasks --cluster $(CLUSTER) --tasks $$TASK_ID \
+	  --region $(REGION) --query "tasks[0].containers[0].exitCode" --output text); \
+	[ "$$EXIT" = "0" ] && echo "✓ History seeded" || (echo "✗ Task failed (exit $$EXIT)" && exit 1)
 
 # Print the ALB HTTP URL (available immediately, no CloudFront needed)
 aws-alb-url:
