@@ -97,7 +97,7 @@ _Tackle these in order; each builds on the previous._
 - [x] Auto zoom selected county to a comfortable zoom level that shows surrounding counties but not the whole zoomed out map, this should also work when the app loads to zoom on the default
 - [ ] Let users lasso parts of the map to select counties to generate simulations against
 - [ ] Add a dropdown to allow users to change the view from the default of county view to state and region (NE, NW, SE, etc.)
-- [ ] Add a toggle to display or hide U.S. territories
+- [x] Add a toggle to display or hide U.S. territories
 
 ### Dashboard Features
 - [x] Make the risk levels at the top filter options so we can display only criticals, elevated etc.
