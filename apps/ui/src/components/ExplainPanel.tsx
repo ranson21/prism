@@ -6,6 +6,7 @@ import { formatDate } from '../lib/dates'
 import { useGetCountyDetailQuery, useGetCountyHistoryQuery } from '../store/api'
 
 const FACTOR_LABEL: Record<string, string> = {
+  major_disaster_count:      'Major Disasters (FEMA)',
   severe_weather_count:      'Severe Weather',
   hazard_frequency_score:    'Hazard Frequency',
   population_exposure:       'Population Exposure',
@@ -186,8 +187,8 @@ function HistoryTab({ fips: fipsCode, currentScore, currentLevel }: { fips: stri
 
   const color = riskColor(currentLevel as any)
   const scores = chartData.map((d) => d.score)
-  const min = Math.max(0, Math.min(...scores) - 10)
-  const max = Math.min(100, Math.max(...scores) + 10)
+  const min = Math.max(0, Math.floor((Math.min(...scores) - 10) / 5) * 5)
+  const max = Math.min(100, Math.ceil((Math.max(...scores) + 10) / 5) * 5)
 
   return (
     <div className="px-4 pt-4 pb-4">
@@ -197,7 +198,7 @@ function HistoryTab({ fips: fipsCode, currentScore, currentLevel }: { fips: stri
       <ResponsiveContainer width="100%" height={180}>
         <LineChart data={chartData} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
           <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-          <YAxis domain={[min, max]} tick={{ fontSize: 10, fill: '#94a3b8' }} width={28} />
+          <YAxis domain={[min, max]} tickCount={6} tickFormatter={(v) => Math.round(v).toString()} tick={{ fontSize: 10, fill: '#94a3b8' }} width={28} />
           <Tooltip
             formatter={(v) => [Number(v).toFixed(1), 'Risk Score']}
             contentStyle={{ background: '#1F2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}

@@ -36,8 +36,8 @@ export function RiskMap({ rankings, selectedFips, onSelect, highlightFips, focus
           onMoveEnd={({ zoom: z, coordinates }) => {
             setZoom(z)
             setCenter([
-              Math.max(-100, Math.min(100, coordinates[0])),
-              Math.max(-55, Math.min(55, coordinates[1])),
+              Math.max(-135, Math.min(135, coordinates[0])),
+              Math.max(-55, Math.min(75, coordinates[1])),
             ])
           }}
           minZoom={MIN_ZOOM}
