@@ -104,8 +104,9 @@ Click "About / Agency Pilot" in the dashboard header to close with the Phase 1 �
 - Connect to agency real-time weather feeds (NOAA / NWS WebSocket / streaming API)
 - Push ranked county alerts into existing EOC workflow tools (push API or webhook)
 - Add state and regional filtering for state emergency operations centers
+- **Federate with agency SSO** — SAML 2.0 / OIDC integration with agency Active Directory (ADFS), Okta Federal, or Azure AD; PIV/CAC card support via agency IdP; Login.gov fallback; role-mapped county scope per analyst (see [`docs/architecture.md — Agency SSO Integration`](architecture.md))
 - Deploy on FedRAMP-authorized cloud infrastructure (AWS GovCloud / Azure Government)
-- Complete ATO (Authority to Operate) process with security controls documented
+- Complete ATO (Authority to Operate) process with security controls documented (AC-2, IA-2 controls met by SSO federation)
 
 ### Phase 2 — Enterprise Disaster Intelligence (12–24 months)
 - Satellite imagery integration for real-time damage assessment

@@ -218,6 +218,94 @@ make docker-up                 Managed PostgreSQL (RDS)           GitOps deploym
 
 ---
 
+### Agency SSO Integration
+
+Government agency deployments require federated authentication rather than local accounts. PRISM's Go API `auth` domain is the integration point for all identity federation.
+
+#### Supported Identity Protocols
+
+| Protocol | Use Case |
+|---|---|
+| **SAML 2.0 (SP-initiated)** | Primary flow for agencies running Active Directory Federation Services (ADFS) or Okta Federal |
+| **OIDC / OAuth 2.0** | Modern agencies using Azure AD (Entra ID), Okta, or Ping Identity |
+| **PIV/CAC + PKI** | DoD and DHS personnel authenticating with hardware tokens; certificate validation delegated to agency IdP |
+| **Login.gov** | Fallback for agencies without a federated IdP; NIST 800-63 IAL2/AAL2 assurance level |
+
+#### SAML 2.0 SP-Initiated Flow
+
+```
+Agency Browser            PRISM (SP)                    Agency IdP (ADFS / Okta)
+──────────────            ──────────                    ────────────────────────
+  │                          │                                    │
+  │  GET /dashboard          │                                    │
+  │ ────────────────────────►│                                    │
+  │                          │  AuthnRequest (redirect binding)   │
+  │ ◄─────── 302 ────────────│───────────────────────────────────►│
+  │                          │                                    │  Validate user
+  │                          │                                    │  (LDAP / PIV/CAC)
+  │                          │   SAMLResponse (POST binding)      │
+  │ POST /auth/saml/callback │◄───────────────────────────────────│
+  │ ────────────────────────►│                                    │
+  │                          │  Validate assertion signature      │
+  │                          │  Extract NameID + role attributes  │
+  │                          │  Issue signed JWT (15 min)         │
+  │  Set-Cookie: session_jwt │                                    │
+  │ ◄────────────────────────│                                    │
+```
+
+#### OIDC / OAuth 2.0 Flow (Azure AD / Okta)
+
+```
+Agency Browser            PRISM (RP)                    Agency IdP
+──────────────            ──────────                    ──────────
+  GET /dashboard  ──────►  302 → /authorize?client_id=prism&scope=openid+profile
+  Follow redirect ─────────────────────────────────────────────────────────────►
+                                                          Authenticate user
+  POST /auth/callback  ◄─────────────────── code=<auth_code>
+  PRISM exchanges code for id_token + access_token
+  Validate id_token (signature, iss, aud, exp)
+  Extract sub + groups claims → map to PRISM roles
+  Issue session JWT  ──────► Set-Cookie: session_jwt
+```
+
+#### PIV/CAC Support
+
+PIV/CAC card authentication is handled at the agency IdP layer — PRISM does not touch the hardware token directly. The agency ADFS or Okta instance performs certificate validation against the Federal PKI (FPKI) trust anchor, then issues a SAML assertion or OIDC token that PRISM accepts normally. No changes to PRISM's auth domain are required for CAC support; it is an IdP configuration.
+
+#### Role Mapping
+
+SAML attributes or OIDC group claims from the agency directory map to PRISM authorization scopes:
+
+| Agency Directory Group | PRISM Role | Scope |
+|---|---|---|
+| `prism-national-read` | `analyst` | All 3,220 counties |
+| `prism-region-{1–10}` | `regional-analyst` | Counties within FEMA region |
+| `prism-state-{fips}` | `state-analyst` | Counties within one state |
+| `prism-admin` | `admin` | Full access + model management |
+
+The Go API enforces scope on every request: `GET /risk/rankings` filtered by the caller's county whitelist, derived from their role at JWT issuance time.
+
+#### JWT Validation (Go API)
+
+All requests carry a short-lived signed JWT (`Authorization: Bearer <token>`). The `auth` domain in the Go API:
+1. Verifies the HMAC-SHA256 or RS256 signature
+2. Checks `exp`, `iss`, `aud` claims
+3. Extracts the `fips_scope` claim (list of allowed county FIPS codes or `"*"` for national)
+4. Injects scope into the request context for downstream handlers
+
+Tokens expire in 15 minutes; the UI refreshes silently via a `/auth/refresh` endpoint backed by a rotating refresh token stored in an HttpOnly cookie.
+
+#### Integration Steps (Agency Pilot)
+
+1. Agency IT provides SAML metadata XML (EntityID, SSO URL, signing certificate) or OIDC discovery endpoint
+2. PRISM registers as a Service Provider in the agency directory — provide PRISM entity ID, ACS URL, and attribute mapping requirements
+3. Configure group/attribute → PRISM role mapping in `services/api/internal/auth/saml_config.go`
+4. Test SP-initiated login from agency network with a test account
+5. Enable PIV/CAC enforcement at the IdP level if required (no PRISM code changes)
+6. Document in Authority to Operate (ATO) package under AC-2 (Account Management) and IA-2 (Identification and Authentication)
+
+---
+
 ## Expansion Path
 
 ### Phase 1 — Agency Pilot
