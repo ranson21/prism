@@ -4,10 +4,12 @@ import type { RankedCounty } from '../store/api'
 interface Props {
   rankings: RankedCounty[]
   selectedFips: string | null
+  hoveredFips: string | null
   onSelect: (fips: string) => void
+  onHover: (fips: string | null) => void
 }
 
-export function RankingsTable({ rankings, selectedFips, onSelect }: Props) {
+export function RankingsTable({ rankings, selectedFips, hoveredFips, onSelect, onHover }: Props) {
   return (
     <div className="rounded-xl bg-[#111827] border border-white/10 overflow-hidden flex flex-col">
       <div className="px-3 py-3 border-b border-white/10 shrink-0">
@@ -30,10 +32,14 @@ export function RankingsTable({ rankings, selectedFips, onSelect }: Props) {
               <tr
                 key={r.fips_code}
                 onClick={() => onSelect(r.fips_code)}
+                onMouseEnter={() => onHover(r.fips_code)}
+                onMouseLeave={() => onHover(null)}
                 className={`cursor-pointer border-t border-white/5 transition-colors
                   ${selectedFips === r.fips_code
                     ? 'bg-white/10'
-                    : 'hover:bg-white/5'
+                    : hoveredFips === r.fips_code
+                      ? 'bg-white/7'
+                      : 'hover:bg-white/5'
                   }`}
               >
                 <td className="px-3 py-2 text-right text-slate-600 tabular-nums">{r.rank}</td>

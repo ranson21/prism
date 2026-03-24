@@ -21,6 +21,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [showAbout, setShowAbout] = useState(false)
   const [selectedFips, setSelectedFips] = useState<string | null>(null)
+  const [hoveredFips, setHoveredFips] = useState<string | null>(null)
   const [simResults, setSimResults] = useState<SimResult[] | null>(null)
   const [simFips, setSimFips] = useState<Set<string>>(new Set())
   const [focusSelected, setFocusSelected] = useState(false)
@@ -137,7 +138,9 @@ export default function App() {
             <RankingsTable
               rankings={counties.slice(0, 100)}
               selectedFips={selectedFips}
+              hoveredFips={hoveredFips}
               onSelect={setSelectedFips}
+              onHover={setHoveredFips}
             />
 
             {/* Explain Panel */}
@@ -158,7 +161,9 @@ export default function App() {
                 <RiskMap
                   rankings={counties}
                   selectedFips={selectedFips}
+                  hoveredFips={hoveredFips}
                   onSelect={setSelectedFips}
+                  onHover={setHoveredFips}
                 />
                 <ScoreTimestamp scoreDate={summary?.top_counties[0]?.score_date} />
               </div>
