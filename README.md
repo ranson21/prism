@@ -4,9 +4,11 @@ An AI-powered disaster risk intelligence platform that helps emergency planners 
 
 > "Where should we act right now, and why?"
 
-**Live demo:** https://prod.d3vtja5wfwepyp.amplifyapp.com
-**Live dashboard:** https://prod.d3vtja5wfwepyp.amplifyapp.com/app
-**Documentation:** https://prod.d3vtja5wfwepyp.amplifyapp.com/docs
+| | |
+|---|---|
+| **Live demo** | https://prod.d3vtja5wfwepyp.amplifyapp.com |
+| **Live dashboard** | https://prod.d3vtja5wfwepyp.amplifyapp.com/app |
+| **Documentation** | https://prod.d3vtja5wfwepyp.amplifyapp.com/docs/agency-pilot |
 
 ---
 
@@ -154,7 +156,7 @@ The live system is deployed at **https://prod.d3vtja5wfwepyp.amplifyapp.com** �
 4. **Switch to History tab** — see the 6-month score trend for that county.
 5. **Open the Scenario Simulator** — select "Category 5 Hurricane", set Resource Units to 50, click Run. Results show which counties spike to critical, which 50 receive a resource team (DEPLOYED), and which have unmet need (UNMET).
 6. **Click "About / Agency Pilot"** in the header — methodology, scoring approach, and adoption roadmap.
-7. **Browse the docs site** at `/docs` — full technical documentation including architecture, ML pipeline, responsible AI commitments, and agency SSO integration design.
+7. **Browse the docs site** at `/docs/agency-pilot` — full technical documentation including architecture, ML pipeline, responsible AI commitments, and agency SSO integration design.
 
 Full presenter talking points: [`docs/demo_script.md`](docs/demo_script.md)
 
