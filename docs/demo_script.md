@@ -8,16 +8,15 @@ Aim for 5 minutes end-to-end. Read the quoted lines as written. Actions tell you
 
 ## Before You Present — Technical Setup
 
-**Have a technical team member do this before you walk in the room:**
+**Open these three browser tabs before you walk in the room:**
 
-1. Start all services: `make docker-up` (takes about 30 seconds)
-2. Open two browser tabs:
-   - Tab 1: `http://localhost` — the landing site
-   - Tab 2: `http://localhost:3000` — the live dashboard
-3. On Tab 2, confirm the map has loaded and counties are color-coded
-4. Do not pre-select any county or scenario
+1. Tab 1: `https://prod.d3vtja5wfwepyp.amplifyapp.com` — the landing site
+2. Tab 2: `https://prod.d3vtja5wfwepyp.amplifyapp.com/app` — the live dashboard
+3. Tab 3: `https://prod.d3vtja5wfwepyp.amplifyapp.com/docs/agency-pilot` — agency pilot brief (for judge follow-up)
 
-**If anything looks broken**, refresh the page and wait 10 seconds. If it's still broken, call in the technical team member.
+On Tab 2, confirm the map has loaded and counties are color-coded before you begin. Do not pre-select any county or scenario.
+
+**If anything looks broken**, refresh the page and wait 10 seconds. The system is cloud-hosted — no local services need to be running.
 
 ---
 
@@ -125,6 +124,10 @@ Aim for 5 minutes end-to-end. Read the quoted lines as written. Actions tell you
 
 > "One more thing — this is not a prototype that needs six months to harden before it can go anywhere. The entire cloud infrastructure is defined as code. We deployed a production-grade AWS environment — load balancer, private database, container services, security controls — with a single command. On day one of an agency engagement, we can have a live instance running on FedRAMP-authorized government cloud infrastructure without writing a single line of new deployment code."
 
+**Switch to Tab 3** — the docs site. **Click through the sidebar** to show the available documentation.
+
+> "Full technical documentation is published here — methodology, data pipeline, responsible AI commitments, agency pilot brief, and the architecture including the SSO integration design for connecting to your agency's existing identity system."
+
 ---
 
 ## Closing (15 seconds)
@@ -137,8 +140,12 @@ Aim for 5 minutes end-to-end. Read the quoted lines as written. Actions tell you
 
 | What | URL |
 |---|---|
-| Landing site | `http://localhost` |
-| Live dashboard | `http://localhost:3000` |
+| Landing site | `https://prod.d3vtja5wfwepyp.amplifyapp.com` |
+| Live dashboard | `https://prod.d3vtja5wfwepyp.amplifyapp.com/app` |
+| Docs — Agency Pilot | `https://prod.d3vtja5wfwepyp.amplifyapp.com/docs/agency-pilot` |
+| Docs — Architecture | `https://prod.d3vtja5wfwepyp.amplifyapp.com/docs/architecture` |
+| Docs — Responsible AI | `https://prod.d3vtja5wfwepyp.amplifyapp.com/docs/responsible-ai` |
+| Docs — ML Pipeline | `https://prod.d3vtja5wfwepyp.amplifyapp.com/docs/ml-pipeline` |
 
 ---
 
@@ -154,7 +161,7 @@ Aim for 5 minutes end-to-end. Read the quoted lines as written. Actions tell you
 > "Because no system can do that reliably — and any system that claims to is misleading you. FEMA's own disaster declaration data lags the actual event by weeks or months, so there's no reliable ground truth to train a prediction model on. PRISM does something more honest and more useful: it shows you where the risk signals are highest right now, so you can act before the crisis, not after."
 
 **"What about territories — Puerto Rico, Guam?"**
-> "Current coverage is the 50 states. Adding territories is on the roadmap — it's a data availability question, not an architecture change."
+> "Territories are included — Puerto Rico, Guam, the U.S. Virgin Islands, American Samoa, and the Northern Mariana Islands are all scored and displayed on the map. Use the territory toggle in the top bar to show them."
 
 **"How do you handle fairness — are lower-income communities treated differently?"**
 > "Yes, intentionally. Lower income is explicitly built into the score as a risk amplifier — counties with less financial resilience rank higher, because they have less capacity to prepare, evacuate, and recover. It's visible in the model and documented in our Responsible AI commitments."

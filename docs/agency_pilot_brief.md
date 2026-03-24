@@ -55,7 +55,7 @@ All data is public, all scoring is auditable, all outputs trace back to named fa
 
 ## Live Demo Flow (5 Minutes)
 
-**Two screens:** Landing site (`http://localhost`) and dashboard (`http://localhost:3000`).
+**Two screens:** Landing site (`https://prod.d3vtja5wfwepyp.amplifyapp.com`) and dashboard (`https://prod.d3vtja5wfwepyp.amplifyapp.com/app`). Full documentation is at `https://prod.d3vtja5wfwepyp.amplifyapp.com/docs`.
 
 ### Minute 1 — Open on the Site, Then the Dashboard
 Open the PRISM landing site. Scroll through the Problem section (fragmented data, reactive decisions, no explainability) to set the narrative. Click "Open Live Dashboard."
