@@ -5,9 +5,11 @@ interface Props {
   summary: SummaryResponse
   activeFilter: string | null
   onFilter: (level: string) => void
+  showTerritories: boolean
+  onToggleTerritories: () => void
 }
 
-export function SummaryBar({ summary, activeFilter, onFilter }: Props) {
+export function SummaryBar({ summary, activeFilter, onFilter, showTerritories, onToggleTerritories }: Props) {
   const { distribution, total_counties_scored } = summary
   const levels = ['critical', 'elevated', 'moderate', 'low'] as const
 
@@ -41,11 +43,22 @@ export function SummaryBar({ summary, activeFilter, onFilter }: Props) {
       {activeFilter && (
         <button
           onClick={() => onFilter(activeFilter)}
-          className="ml-auto text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+          className="text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
         >
           Clear filter ×
         </button>
       )}
+      <button
+        onClick={onToggleTerritories}
+        title="Toggle U.S. territories (PR, GU, VI, AS, MP) — not shown on map"
+        className={`ml-auto text-[10px] px-2 py-1 rounded-lg border transition-colors cursor-pointer ${
+          showTerritories
+            ? 'border-sky-500/50 bg-sky-500/10 text-sky-400'
+            : 'border-white/10 text-slate-500 hover:text-slate-300'
+        }`}
+      >
+        {showTerritories ? 'Territories on' : 'Territories off'}
+      </button>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Annotation } from 'react-simple-maps'
-import { geoCentroid, geoAlbersUsa } from 'd3-geo'
+import { geoCentroid } from 'd3-geo'
+import { geoAlbersUsaTerritories } from 'd3-composite-projections'
 import { feature as topoFeature } from 'topojson-client'
 import type { Topology, GeometryCollection } from 'topojson-specification'
 import { Plus, Minus, RotateCcw } from 'lucide-react'
@@ -14,9 +15,19 @@ const STATES_URL   = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'
 const MIN_ZOOM = 1
 const MAX_ZOOM = 8
 
-// Shared validator — geoAlbersUsa returns null for coordinates outside its
-// valid projection range; use this to guard all center/centroid assignments.
-const albersProj = geoAlbersUsa()
+// Territories-aware projection — includes insets for PR, GU, VI, AS, CNMI.
+// Used as ComposableMap's projection prop and for centroid validation.
+const albersProj = geoAlbersUsaTerritories()
+
+// Territory geographic centroids — shown whenever territories are visible.
+// geoAlbersUsaTerritories maps these real coordinates to their inset positions.
+const TERRITORY_LABELS: [string, number, number][] = [
+  ['PR', -66.5, 18.2],
+  ['VI', -64.8, 17.7],
+  ['GU', 144.8, 13.5],
+  ['AS', -170.7, -14.3],
+  ['MP', 145.8, 15.2],
+]
 
 // Continental US state centroids [longitude, latitude] for abbreviation labels
 const STATE_LABELS: [string, number, number][] = [
@@ -34,6 +45,8 @@ const STATE_LABELS: [string, number, number][] = [
   ['WA', -120.5, 47.4], ['WI', -89.6, 44.5], ['WV', -80.6, 38.6], ['WY', -107.6, 43.0],
 ]
 
+const TERRITORY_PREFIXES = new Set(['60', '66', '69', '72', '78'])
+
 interface Props {
   rankings: RankedCounty[]
   selectedFips: string | null
@@ -42,6 +55,7 @@ interface Props {
   onHover?: (fips: string | null) => void
   highlightFips?: Set<string>
   focusHighlighted?: boolean
+  showTerritories?: boolean
 }
 
 interface TooltipState {
@@ -56,7 +70,7 @@ function scoreFillOpacity(score: number): number {
   return 0.60 + (score / 100) * 0.40
 }
 
-export function RiskMap({ rankings, selectedFips, hoveredFips, onSelect, onHover, highlightFips, focusHighlighted }: Props) {
+export function RiskMap({ rankings, selectedFips, hoveredFips, onSelect, onHover, highlightFips, focusHighlighted, showTerritories = false }: Props) {
   const [zoom, setZoom] = useState(1)
   // geoAlbersUsa returns null for [0,0] (off Africa) — use geographic center of continental US
   const [center, setCenter] = useState<[number, number]>([-96, 38])
@@ -135,7 +149,10 @@ export function RiskMap({ rankings, selectedFips, hoveredFips, onSelect, onHover
         </div>
       )}
 
-      <ComposableMap projection="geoAlbersUsa" style={{ width: '100%', height: '100%' }}>
+      {/* width/height must match geoAlbersUsaTerritories' default coordinate space (960×500).
+          style overrides the rendered CSS size so the SVG fills its container. */}
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <ComposableMap projection={albersProj as any} width={960} height={500} style={{ width: '100%', height: '100%' }}>
         {/* SVG bloom filter — feGaussianBlur + feBlend composite creates luminance
             glow on vivid fills without blurring the actual county edges */}
         <defs>
@@ -150,11 +167,11 @@ export function RiskMap({ rankings, selectedFips, hoveredFips, onSelect, onHover
           center={center}
           onMoveEnd={({ zoom: z, coordinates }) => {
             setZoom(z)
-            // Only update center if the new coordinate projects without error.
-            // geoAlbersUsa returns null for points outside its valid range
-            // (e.g. pan drift near inset edges), which crashes ZoomableGroup.
-            if (albersProj([coordinates[0], coordinates[1]]) !== null) {
-              setCenter([coordinates[0], coordinates[1]])
+            // Constrain pan to the geographic extent of the US + territories.
+            // Prevents scrolling the map entirely off screen.
+            const [lon, lat] = coordinates
+            if (lon >= -180 && lon <= -60 && lat >= 10 && lat <= 75) {
+              setCenter([lon, lat])
             }
           }}
           minZoom={MIN_ZOOM}
@@ -164,6 +181,7 @@ export function RiskMap({ rankings, selectedFips, hoveredFips, onSelect, onHover
             {({ geographies }: { geographies: any[] }) =>
               geographies.map((geo: any) => {
                 const fips = geo.id.toString().padStart(5, '0')
+                if (!showTerritories && TERRITORY_PREFIXES.has(fips.slice(0, 2))) return null
                 const county = scoreByFips.get(fips)
                 const isSelected = fips === selectedFips
                 const isHighlighted = highlightFips?.has(fips) ?? false
@@ -229,7 +247,10 @@ export function RiskMap({ rankings, selectedFips, hoveredFips, onSelect, onHover
           {/* State boundaries — rendered above county fills, no fill so county colors show through */}
           <Geographies geography={STATES_URL}>
             {({ geographies }: { geographies: any[] }) =>
-              geographies.map((geo: any) => (
+              geographies.map((geo: any) => {
+                const stateFips = geo.id?.toString().padStart(2, '0')
+                if (!showTerritories && TERRITORY_PREFIXES.has(stateFips)) return null
+                return (
                 <Geography
                   key={geo.rsmKey}
                   geography={geo}
@@ -245,12 +266,43 @@ export function RiskMap({ rankings, selectedFips, hoveredFips, onSelect, onHover
                     pressed: { fill: 'none', outline: 'none', pointerEvents: 'none' },
                   }}
                 />
-              ))
+                )
+              })
             }
           </Geographies>
 
           {/* State abbreviation labels — fade in at zoom ≥ 2 so they don't clutter the default view */}
           {zoom >= 2 && STATE_LABELS.map(([abbr, lon, lat]) => (
+            <Annotation
+              key={abbr}
+              subject={[lon, lat]}
+              dx={0}
+              dy={0}
+              connectorProps={{}}
+            >
+              <text
+                textAnchor="middle"
+                dominantBaseline="middle"
+                style={{
+                  fontSize: `${Math.max(4, 10 / zoom)}px`,
+                  fill: 'rgba(226,232,240,0.95)',
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  stroke: 'rgba(8,15,26,0.85)',
+                  strokeWidth: `${2.5 / zoom}px`,
+                  strokeLinejoin: 'round',
+                  paintOrder: 'stroke fill',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+              >
+                {abbr}
+              </text>
+            </Annotation>
+          ))}
+
+          {/* Territory labels — always visible when territories are shown */}
+          {showTerritories && TERRITORY_LABELS.map(([abbr, lon, lat]) => (
             <Annotation
               key={abbr}
               subject={[lon, lat]}

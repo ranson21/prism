@@ -40,8 +40,35 @@ STATE_NAMES: dict[str, tuple[str, str]] = {
     "47": ("Tennessee", "TN"), "48": ("Texas", "TX"), "49": ("Utah", "UT"),
     "50": ("Vermont", "VT"), "51": ("Virginia", "VA"), "53": ("Washington", "WA"),
     "54": ("West Virginia", "WV"), "55": ("Wisconsin", "WI"), "56": ("Wyoming", "WY"),
+    # Territories
+    "60": ("American Samoa", "AS"),
+    "66": ("Guam", "GU"),
+    "69": ("Northern Mariana Islands", "MP"),
     "72": ("Puerto Rico", "PR"),
+    "78": ("U.S. Virgin Islands", "VI"),
 }
+
+# Territory county-equivalents not returned by Census PEP API.
+# Populations from most recent Census/estimate; income set to None (ACS not available).
+TERRITORY_COUNTIES: list[tuple[str, str, str, str, str, int | None, None]] = [
+    # American Samoa (5 districts)
+    ("60010", "Eastern District",          "60", "American Samoa",          "AS", 23030, None),
+    ("60020", "Manu'a District",           "60", "American Samoa",          "AS",  1290, None),
+    ("60030", "Rose Island",               "60", "American Samoa",          "AS",     0, None),
+    ("60040", "Swains Island",             "60", "American Samoa",          "AS",    17, None),
+    ("60050", "Western District",          "60", "American Samoa",          "AS", 32507, None),
+    # Guam (single county-equivalent)
+    ("66010", "Guam",                      "66", "Guam",                    "GU", 153836, None),
+    # Northern Mariana Islands (4 municipalities)
+    ("69085", "Northern Islands",          "69", "Northern Mariana Islands","MP",    73, None),
+    ("69100", "Rota",                      "69", "Northern Mariana Islands","MP",  2527, None),
+    ("69110", "Saipan",                    "69", "Northern Mariana Islands","MP", 48220, None),
+    ("69120", "Tinian",                    "69", "Northern Mariana Islands","MP",  3136, None),
+    # U.S. Virgin Islands (3 islands)
+    ("78010", "St. Croix",                 "78", "U.S. Virgin Islands",     "VI", 50601, None),
+    ("78020", "St. John",                  "78", "U.S. Virgin Islands",     "VI",  4197, None),
+    ("78030", "St. Thomas",                "78", "U.S. Virgin Islands",     "VI", 41990, None),
+]
 
 
 async def _fetch_median_income(client: httpx.AsyncClient) -> dict[str, int | None]:
@@ -132,7 +159,15 @@ async def seed() -> None:
             income_by_fips.get(fips_code),
         ))
 
-    log.info("Inserting %d counties (with income data for %d)...", len(counties), sum(1 for c in counties if c[6] is not None))
+    # Append hardcoded territory county-equivalents (not returned by Census PEP)
+    all_counties = counties + list(TERRITORY_COUNTIES)
+
+    log.info(
+        "Inserting %d counties (%d territories, income data for %d)...",
+        len(all_counties),
+        len(TERRITORY_COUNTIES),
+        sum(1 for c in all_counties if c[6] is not None),
+    )
 
     async with get_conn() as conn:
         async with conn.cursor() as cur:
@@ -147,7 +182,7 @@ async def seed() -> None:
                     median_household_income  = EXCLUDED.median_household_income,
                     updated_at               = now()
                 """,
-                counties,
+                all_counties,
             )
         await conn.commit()
 

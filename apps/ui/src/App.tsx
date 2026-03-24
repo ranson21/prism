@@ -27,11 +27,18 @@ export default function App() {
   const [focusSelected, setFocusSelected] = useState(false)
   const [levelFilter, setLevelFilter] = useState<string | null>(null)
   const [rankingLimit, setRankingLimit] = useState<number | null>(100)
+  const [showTerritories, setShowTerritories] = useState(false)
 
   const { data: summary } = useGetSummaryQuery()
   const { data: rankings, isLoading } = useGetRankingsQuery({ limit: 3500 })
 
-  const counties = rankings?.rankings ?? []
+  const TERRITORY_FIPS_PREFIX = ['60', '66', '69', '72', '78']
+  const isTerritory = (fips: string) => TERRITORY_FIPS_PREFIX.includes(fips.slice(0, 2))
+
+  const counties = useMemo(() => {
+    const all = rankings?.rankings ?? []
+    return showTerritories ? all : all.filter(c => !isTerritory(c.fips_code))
+  }, [rankings, showTerritories])
 
   const filteredCounties = useMemo(() => {
     const byLevel = levelFilter ? counties.filter(c => c.risk_level === levelFilter) : counties
@@ -149,6 +156,8 @@ export default function App() {
             summary={summary}
             activeFilter={levelFilter}
             onFilter={(level) => setLevelFilter(prev => prev === level ? null : level)}
+            showTerritories={showTerritories}
+            onToggleTerritories={() => setShowTerritories(v => !v)}
           />
         )}
 
@@ -196,6 +205,7 @@ export default function App() {
                   hoveredFips={hoveredFips}
                   onSelect={setSelectedFips}
                   onHover={setHoveredFips}
+                  showTerritories={showTerritories}
                 />
                 <ScoreTimestamp scoreDate={summary?.top_counties[0]?.score_date} />
               </div>
@@ -242,6 +252,7 @@ export default function App() {
                   onSelect={toggleSimFips}
                   highlightFips={simFips}
                   focusHighlighted={focusSelected}
+                  showTerritories={showTerritories}
                 />
                 <ScoreTimestamp scoreDate={summary?.top_counties[0]?.score_date} />
               </div>
