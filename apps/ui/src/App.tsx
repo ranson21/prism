@@ -42,11 +42,9 @@ export default function App() {
       async (pos) => {
         const { latitude: lat, longitude: lon } = pos.coords
         try {
-          const res = await fetch(
-            `https://geocoding.geo.census.gov/geocoder/geographies/coordinates?x=${lon}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current&format=json`
-          )
+          const res = await fetch(`/api/geo/fips?lat=${lat}&lon=${lon}`)
           const data = await res.json()
-          const fips: string | undefined = data?.result?.geographies?.Counties?.[0]?.GEOID
+          const fips: string | undefined = data?.fips
           setSelectedFips(fips ?? counties[0].fips_code)
         } catch {
           fallback()

@@ -1,5 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Annotation } from 'react-simple-maps'
+import { geoCentroid, geoAlbersUsa } from 'd3-geo'
+import { feature as topoFeature } from 'topojson-client'
+import type { Topology, GeometryCollection } from 'topojson-specification'
 import { Plus, Minus, RotateCcw } from 'lucide-react'
 import { scoreToColor } from '../lib/risk'
 import { RiskBadge } from './RiskBadge'
@@ -10,6 +13,10 @@ const STATES_URL   = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 8
+
+// Shared validator — geoAlbersUsa returns null for coordinates outside its
+// valid projection range; use this to guard all center/centroid assignments.
+const albersProj = geoAlbersUsa()
 
 // Continental US state centroids [longitude, latitude] for abbreviation labels
 const STATE_LABELS: [string, number, number][] = [
@@ -51,15 +58,48 @@ function scoreFillOpacity(score: number): number {
 
 export function RiskMap({ rankings, selectedFips, hoveredFips, onSelect, onHover, highlightFips, focusHighlighted }: Props) {
   const [zoom, setZoom] = useState(1)
-  const [center, setCenter] = useState<[number, number]>([0, 0])
+  // geoAlbersUsa returns null for [0,0] (off Africa) — use geographic center of continental US
+  const [center, setCenter] = useState<[number, number]>([-96, 38])
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const centroidsRef = useRef<Map<string, [number, number]>>(new Map())
+
+  // Fetch topojson once on mount and pre-compute all county centroids.
+  // Validate each centroid through albersProj — returns null for coordinates
+  // outside the projection's valid range, which crashes ZoomableGroup.
+  useEffect(() => {
+    fetch(COUNTIES_URL)
+      .then(r => r.json())
+      .then(topo => {
+        const topology = topo as unknown as Topology<{ counties: GeometryCollection }>
+        const collection = topoFeature(topology, topology.objects.counties)
+        for (const f of collection.features) {
+          const fips = String(f.id).padStart(5, '0')
+          try {
+            const c = geoCentroid(f)
+            if (Array.isArray(c) && isFinite(c[0]) && isFinite(c[1]) && albersProj([c[0], c[1]]) !== null) {
+              centroidsRef.current.set(fips, [c[0], c[1]])
+            }
+          } catch { /* skip degenerate geometries */ }
+        }
+      })
+      .catch(() => { /* silently skip if fetch fails */ })
+  }, [])
+
+  // Zoom to selected county using its pre-computed centroid
+  useEffect(() => {
+    if (!selectedFips) return
+    const c = centroidsRef.current.get(selectedFips)
+    if (!c) return
+    setCenter(c)
+    setZoom(6)
+  }, [selectedFips])
 
   const scoreByFips = new Map(rankings.map((r) => [r.fips_code, r]))
 
   function zoomIn() { setZoom((z) => Math.min(z * 1.5, MAX_ZOOM)) }
   function zoomOut() { setZoom((z) => Math.max(z / 1.5, MIN_ZOOM)) }
-  function reset() { setZoom(1); setCenter([0, 0]) }
+  function reset() { setZoom(1); setCenter([-96, 38]) }
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     if (!tooltip || !containerRef.current) return
@@ -110,10 +150,12 @@ export function RiskMap({ rankings, selectedFips, hoveredFips, onSelect, onHover
           center={center}
           onMoveEnd={({ zoom: z, coordinates }) => {
             setZoom(z)
-            setCenter([
-              Math.max(-135, Math.min(135, coordinates[0])),
-              Math.max(-55, Math.min(75, coordinates[1])),
-            ])
+            // Only update center if the new coordinate projects without error.
+            // geoAlbersUsa returns null for points outside its valid range
+            // (e.g. pan drift near inset edges), which crashes ZoomableGroup.
+            if (albersProj([coordinates[0], coordinates[1]]) !== null) {
+              setCenter([coordinates[0], coordinates[1]])
+            }
           }}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}

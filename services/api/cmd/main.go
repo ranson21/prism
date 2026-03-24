@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -39,6 +41,41 @@ func main() {
 	api := r.Group("/api")
 	risk.NewHandler(q).RegisterRoutes(api.Group("/risk"))
 	scenarios.NewHandler(q).RegisterRoutes(api.Group("/scenarios"))
+
+	// Proxy Census geocoder so the browser avoids the CORS restriction
+	api.GET("/geo/fips", func(c *gin.Context) {
+		lat := c.Query("lat")
+		lon := c.Query("lon")
+		if lat == "" || lon == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "lat and lon are required"})
+			return
+		}
+		url := fmt.Sprintf(
+			"https://geocoding.geo.census.gov/geocoder/geographies/coordinates?x=%s&y=%s&benchmark=Public_AR_Current&vintage=Current_Current&format=json",
+			lon, lat,
+		)
+		resp, err := http.Get(url)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "census geocoder unreachable"})
+			return
+		}
+		defer resp.Body.Close()
+		var payload map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "invalid response from census geocoder"})
+			return
+		}
+		result, _ := payload["result"].(map[string]any)
+		geos, _ := result["geographies"].(map[string]any)
+		counties, _ := geos["Counties"].([]any)
+		if len(counties) == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "no county found for coordinates"})
+			return
+		}
+		county, _ := counties[0].(map[string]any)
+		fips, _ := county["GEOID"].(string)
+		c.JSON(http.StatusOK, gin.H{"fips": fips})
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {

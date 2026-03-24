@@ -94,7 +94,7 @@ _Tackle these in order; each builds on the previous._
 - [x] **P7 — Bidirectional hover sync** — hovering a row in the rankings table highlights the corresponding county on the map and vice versa; reinforces the connection between the table and the map
 
 ### Map UX — Lower Priority
-- [ ] Auto zoom selected county to a comfortable zoom level that shows surrounding counties but not the whole zoomed out map, this should also work when the app loads to zoom on the default
+- [x] Auto zoom selected county to a comfortable zoom level that shows surrounding counties but not the whole zoomed out map, this should also work when the app loads to zoom on the default
 - [ ] Let users lasso parts of the map to select counties to generate simulations against
 - [ ] Add a dropdown to allow users to change the view from the default of county view to state and region (NE, NW, SE, etc.)
 - [ ] Add a toggle to display or hide U.S. territories
