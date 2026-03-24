@@ -99,7 +99,7 @@ Aim for 5 minutes end-to-end. Read the quoted lines as written. Actions tell you
 
 **Point to the green DEPLOYED badges.**
 
-> "Green means a resource team has been assigned. PRISM allocated the 50 teams to the 50 highest-risk counties under this scenario."
+> "Green means a resource team has been assigned. PRISM surfaced the 50 highest-risk counties under this scenario — the model recommends concentrating the 50 teams there based on projected need, but the final call belongs to the incident commander."
 
 **Point to the amber UNMET badges.**
 

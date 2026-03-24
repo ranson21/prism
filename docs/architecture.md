@@ -156,7 +156,7 @@ Schema migrations are versioned in `environments/local/migrations/` and applied 
 
 ### Application — Python ML Engine (`services/ml-engine`)
 - Four independent data connectors (FEMA, NWS, USGS, Census) — each pluggable and replaceable
-- Feature engineering computes rolling 90-day windows; LEFT JOIN from `geography.counties` guarantees all counties receive a score even with no active events
+- Feature engineering computes rolling 90-day windows; LEFT JOIN from `geography.counties` ensures all counties receive a score even with no active events
 - Training fits MinMaxScaler and K-Means on current county features; persists artifact to disk and registers model version in PostgreSQL
 - Scoring loads artifact, scores all counties in a single pass, writes results to `risk.scores`
 - Triggered on demand via FastAPI endpoints or Makefile targets

@@ -87,7 +87,7 @@ Results show:
 - Which 50 counties receive a resource team (DEPLOYED badge)
 - Which counties have unmet need (UNMET badge)
 
-*Talking point: "With 50 teams to pre-position, PRISM tells you exactly where to send them — and shows you where you'll fall short so leadership can make an informed call to request more."*
+*Talking point: "With 50 teams to pre-position, PRISM surfaces which counties have the highest projected need — giving leadership a data-backed starting point, and showing exactly where you'll fall short so they can make an informed call to request more."*
 
 ### Minute 5 — Back to the Site: The Adoption Story
 Switch back to the landing site. Scroll to the Explainability carousel — let it cycle through a county card to show the score breakdown visually. Then scroll to the bottom CTA.
